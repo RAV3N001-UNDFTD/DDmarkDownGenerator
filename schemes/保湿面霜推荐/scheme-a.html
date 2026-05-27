@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<!-- 方案A · 文本 + 多商卡列表（3× 单商品横卡，上下堆叠）
+     组合模式：text_block → horizontal_card × 3 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>方案A · 文本 + 横卡列表</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --text-primary: #171A26;
+      --text-body:    #3D414D;
+      --price:        #FF0F23;
+      --card-bg:      #F5F6FA;
+      --font: "PingFang SC", -apple-system, "Helvetica Neue", sans-serif;
+    }
+    body {
+      background: #EDEDED;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 0 48px;
+      font-family: var(--font);
+    }
+    .label { width: 375px; margin-bottom: 12px; font-size: 11px; color: #888; }
+    .label strong { color: #333; font-size: 13px; }
+    .output { width: 375px; background: #fff; padding: 16px; }
+
+    /* Markdown */
+    .md-h1 { font-size: 16px; font-weight: 600; line-height: 28px; color: var(--text-primary); margin-bottom: 8px; }
+    .md-p  { font-size: 14px; font-weight: 400; line-height: 24px; color: var(--text-body); }
+    .gap      { height: 24px; }
+    .card-gap { height: 10px; }
+
+    /* ── Card container ── */
+    .card-wrap { background: var(--card-bg); border-radius: 12px; padding: 8px; }
+    .h-card { display: flex; gap: 12px; align-items: flex-start; }
+
+    /* ── Image area ── */
+    .h-img {
+      width: 86px; height: 86px; flex-shrink: 0;
+      border-radius: 8px; background: #D8D9DE;
+      position: relative; overflow: hidden;
+    }
+    /* 收藏 overlay：SVG 自带 16×16 背景，wrapper 只加 blur */
+    .h-collect {
+      position: absolute; top: 4px; left: 4px;
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      border-radius: 4px;
+      line-height: 0;
+    }
+    .h-collect img { width: 16px; height: 16px; display: block; }
+
+    /* ── Content area ── */
+    .h-body {
+      flex: 1; min-width: 0; height: 86px;
+      padding-top: 4px;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Name area (top) ── */
+    /* overflow:hidden 形成 BFC，既包裹 float 又限高至 2 行 */
+    .h-top { max-height: 38px; overflow: hidden; }
+
+    /* 自营 tag — float left：行1文字在 tag 右侧（199px），
+       tag 高 14px，行2（y≥19px）在 tag 下方，回到左边对齐（229px 全宽） */
+    .tag-zying {
+      float: left;
+      margin-right: 4px;
+      margin-top: 3px;
+      display: inline-flex; align-items: center;
+      height: 14px;
+      padding: 0 3px;
+      background: #FF0F23;
+      border-radius: 2px;
+      color: white;
+      font-size: 10px; font-weight: 600; line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* 商品名：块级元素，内联内容绕 float 排列，line-height 19px 含 5px 行距 */
+    .h-name {
+      font-size: 14px; font-weight: 500; line-height: 19px; color: var(--text-primary);
+      word-break: break-word;
+    }
+
+    /* ── Promo + Price area (bottom) ── */
+    .h-bottom { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+
+    /* Promo tags row */
+    .h-promos { display: flex; gap: 4px; align-items: center; }
+
+    /* 满减标签 — flex 垂直居中 */
+    .promo-jian {
+      display: inline-flex; align-items: center;
+      height: 14px; padding: 0 3px;
+      border-radius: 2px;
+      outline: 0.33px solid rgba(255,15,35,0.30); outline-offset: -0.33px;
+      color: #FF0F23; font-size: 10px; font-weight: 400; line-height: 1;
+      white-space: nowrap;
+    }
+    /* 服务标签（价保/退款）— flex 垂直居中 */
+    .promo-svc {
+      display: inline-flex; align-items: center;
+      height: 14px; padding: 0 3px;
+      border-radius: 2px;
+      outline: 0.33px solid rgba(181,105,26,0.30); outline-offset: -0.33px;
+      color: #B5691A; font-size: 10px; font-weight: 400; line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* Price + action row */
+    .h-price-action { display: flex; align-items: center; justify-content: space-between; height: 24px; }
+    .h-price { display: flex; align-items: baseline; gap: 8px; }
+    .price { display: flex; align-items: baseline; gap: 0; }
+    .price-sym { font-size: 12px; font-weight: 600; line-height: 14px; color: var(--price); }
+    .price-num { font-size: 16px; font-weight: 600; line-height: 14px; color: var(--price); }
+    .sold { font-size: 12px; font-weight: 400; line-height: 12px; color: #828794; }
+
+    /* 购买按钮 — split button via img */
+    .btn-buy { display: block; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<div class="label"><strong>方案 A</strong> &nbsp;·&nbsp; 文本 + 横卡列表（text_block → horizontal_card × 3）</div>
+
+<div class="output">
+
+  <div class="md-h1">保湿面霜推荐</div>
+  <p class="md-p">根据你提到的需求，为你精选了3款口碑出色的保湿面霜，覆盖不同价位供参考：</p>
+
+  <div class="gap"></div>
+
+  <!-- ── 卡片1：雅诗兰黛 ── -->
+  <div class="card-wrap">
+    <div class="h-card">
+      <div class="h-img">
+        <div class="h-collect">
+          <img src="../../assets/收藏.svg" alt="">
+        </div>
+      </div>
+      <div class="h-body">
+        <div class="h-top">
+          <span class="tag-zying">自营</span>
+          <div class="h-name">雅诗兰黛 DW高效保湿面霜 50ml 补水修护保湿</div>
+        </div>
+        <div class="h-bottom">
+          <div class="h-promos">
+            <span class="promo-jian">满200减20</span>
+            <span class="promo-svc">7天价保</span>
+            <span class="promo-svc">闪电退款</span>
+          </div>
+          <div class="h-price-action">
+            <div class="h-price">
+              <div class="price">
+                <span class="price-sym">¥</span><span class="price-num">890</span>
+              </div>
+              <span class="sold">已售1万+</span>
+            </div>
+            <img class="btn-buy" src="../../assets/加购 & 购买按钮.svg" width="65" height="24" alt="加购/购买">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-gap"></div>
+
+  <!-- ── 卡片2：兰蔻 ── -->
+  <div class="card-wrap">
+    <div class="h-card">
+      <div class="h-img">
+        <div class="h-collect">
+          <img src="../../assets/收藏.svg" alt="">
+        </div>
+      </div>
+      <div class="h-body">
+        <div class="h-top">
+          <span class="tag-zying">自营</span>
+          <div class="h-name">兰蔻菁纯甜蜜滋养霜 50ml 轻盈补水锁水</div>
+        </div>
+        <div class="h-bottom">
+          <div class="h-promos">
+            <span class="promo-jian">满200减20</span>
+            <span class="promo-svc">7天价保</span>
+          </div>
+          <div class="h-price-action">
+            <div class="h-price">
+              <div class="price">
+                <span class="price-sym">¥</span><span class="price-num">450</span>
+              </div>
+              <span class="sold">已售5000+</span>
+            </div>
+            <img class="btn-buy" src="../../assets/加购 & 购买按钮.svg" width="65" height="24" alt="加购/购买">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-gap"></div>
+
+  <!-- ── 卡片3：科颜氏 ── -->
+  <div class="card-wrap">
+    <div class="h-card">
+      <div class="h-img">
+        <div class="h-collect">
+          <img src="../../assets/收藏.svg" alt="">
+        </div>
+      </div>
+      <div class="h-body">
+        <div class="h-top">
+          <span class="tag-zying">自营</span>
+          <div class="h-name">科颜氏高保湿面霜 200ml 美版大容量</div>
+        </div>
+        <div class="h-bottom">
+          <div class="h-promos">
+            <span class="promo-jian">满200减20</span>
+            <span class="promo-svc">闪电退款</span>
+          </div>
+          <div class="h-price-action">
+            <div class="h-price">
+              <div class="price">
+                <span class="price-sym">¥</span><span class="price-num">320</span>
+              </div>
+              <span class="sold">已售3万+</span>
+            </div>
+            <img class="btn-buy" src="../../assets/加购 & 购买按钮.svg" width="65" height="24" alt="加购/购买">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+  <p class="md-p">需要了解某款具体成分或适合肤质，可以直接告诉我～</p>
+
+</div>
+</body>
+</html>
