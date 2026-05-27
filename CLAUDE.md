@@ -2,7 +2,7 @@
 
 ## 项目说明
 
-本项目用于快速生成 JD AI 购物助手的回复设计方案。设计师描述场景，agent 按规范输出可在浏览器预览的 HTML 方案文件。
+本项目用于快速生成 JD AI 购物助手的回复设计方案。设计师描述场景，agent 通过 **zero-design MCP（`use_design_script`）直接写入 Relay**，无需生成 HTML 中间文件。
 
 ---
 
@@ -10,10 +10,20 @@
 
 用户说「生成一个 XX 场景的方案」时，执行以下步骤：
 
-1. 读取 `design/ai-reply-design.md`，了解完整规范
+1. 确认目标 Relay 节点链接（用户提供，或沿用上次链接）
 2. 根据场景选择合适的组合模式（见下方「组合范式」）
-3. **只生成 1 个 HTML 文件**，放在 `schemes/[场景名]/scheme-a.html`
-4. 用预览服务器验证效果：`npx serve -p 7788 .`（配置已在 `.claude/launch.json`）
+3. 通过 `use_design_script` **分批写入 Relay**（每批建议 ≤10 个节点操作）
+4. 写完后调用 `get_screenshot` 截图确认效果
+
+> 如需 HTML 预览备份，可另存 `schemes/[场景名]/scheme-a.html`，但**不作为默认输出**。
+
+---
+
+## 默认 Relay 目标
+
+- **文件 fileKey**：`2059170750769684481`
+- **页面 pageId**：`0:2`
+- 每次写入前先切换页面：`await relay.setCurrentPageAsync(relay.root.children.find(p => p.id === '0:2'))`
 
 ---
 
@@ -24,16 +34,12 @@
 ├── CLAUDE.md                    ← 本文件
 ├── design/
 │   └── ai-reply-design.md       ← 完整设计规范（必读）
-├── assets/                      ← SVG 切图资源
+├── assets/                      ← SVG 切图资源（HTML 备份用）
 │   ├── 收藏.svg                  16×16
 │   ├── 加购 & 购买按钮.svg        65×24（split button）
-│   ├── 自营标签.svg               26×14（备用，现用纯 CSS）
-│   ├── 促销标.svg                 56×14（备用，现用纯 CSS）
-│   ├── 服务标签1.svg              42×14（备用，现用纯 CSS）
-│   └── 服务标签2.svg              46×14（备用，现用纯 CSS）
-└── schemes/
-    └── [场景名]/
-        └── scheme-a.html
+│   └── ...
+└── schemes/                     ← HTML 备份（可选，非默认）
+    └── [场景名]/scheme-a.html
 ```
 
 ---
@@ -90,7 +96,7 @@ position: relative; overflow: hidden;
 ### 内容区（右，flex:1）
 ```css
 height: 86px; padding-top: 4px;
-display: flex; flex-direction: column; justify-content: space-between;
+display: flex; flex-direction: column;
 ```
 
 #### 上部分：标题区
@@ -163,13 +169,25 @@ tag `float: left`，商品名单字段自然绕排：
 </div>
 ```
 ```css
-.h-price-action { display: flex; align-items: center; justify-content: space-between; }
+.h-price-action { display: flex; align-items: center; justify-content: space-between; height: 24px; }
 .h-price { display: flex; align-items: baseline; gap: 8px; }
 /* ¥ 和数字 gap: 0，两者用 baseline 对齐 */
 .price { display: flex; align-items: baseline; gap: 0; }
 .price-sym { font-size: 12px; font-weight: 600; line-height: 14px; color: #FF0F23; }
 .price-num { font-size: 16px; font-weight: 600; line-height: 14px; color: #FF0F23; }
 .sold { font-size: 12px; font-weight: 400; line-height: 12px; color: #828794; }
+```
+
+**h-body 与 h-bottom 布局**（标题↔promo 6px，promo↔价格 4px）：
+```css
+/* h-body：固定高度 86px，与图片等高；padding-top: 4px，无 padding-bottom */
+.h-body {
+  flex: 1; min-width: 0;
+  height: 86px; padding-top: 4px;
+  display: flex; flex-direction: column;
+}
+/* h-bottom：margin-top:6px 控制标题↔promo 间距；gap:4px 控制 promo↔价格间距 */
+.h-bottom { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 ```
 
 ---
@@ -189,11 +207,83 @@ tag `float: left`，商品名单字段自然绕排：
 
 ---
 
+## Relay 写入规范
+
+### Design Tokens（颜色值 0-1 范围）
+
+| 用途 | Hex | Relay color |
+|------|-----|-------------|
+| 主文字 | #171A26 | `{ r:0.0902, g:0.1020, b:0.1490 }` |
+| 正文 | #3D414D | `{ r:0.2392, g:0.2549, b:0.3020 }` |
+| 价格/促销红 | #FF0F23 | `{ r:1, g:0.059, b:0.137 }` |
+| 服务标签棕 | #B5691A | `{ r:0.710, g:0.412, b:0.102 }` |
+| 已售灰 | #828794 | `{ r:0.510, g:0.529, b:0.580 }` |
+| 卡片背景 | #F5F6FA | `{ r:0.9608, g:0.9647, b:0.9804 }` |
+| 图片占位 | #D8D9DE | `{ r:0.847, g:0.851, b:0.871 }` |
+| 内容区背景 | #FFFFFF | `{ r:1, g:1, b:1 }` |
+
+### 主容器（每次写入的根节点）
+
+```javascript
+container.layoutMode = 'VERTICAL'
+container.paddingLeft = container.paddingRight = 16
+container.paddingTop = container.paddingBottom = 16
+container.itemSpacing = 24           // 各区块间距
+container.primaryAxisSizingMode = 'AUTO'   // 高度随内容增长
+container.counterAxisSizingMode = 'FIXED'  // 宽度固定 375px
+container.fills = [{ type: 'SOLID', color: { r:1, g:1, b:1 } }]
+```
+
+### 文字节点
+
+```javascript
+await relay.loadFontAsync({ family: 'PingFang SC', style: 'Semibold' })  // H1/H2
+await relay.loadFontAsync({ family: 'PingFang SC', style: 'Regular' })   // 正文/促销
+await relay.loadFontAsync({ family: 'PingFang SC', style: 'Medium' })    // 商品名
+
+// 通用设置（FILL 必须在 appendChild 之后设置）
+text.textAutoResize = 'HEIGHT'
+container.appendChild(text)
+text.layoutSizingHorizontal = 'FILL'
+```
+
+### 商品横卡节点结构
+
+```
+cardWrap  HORIZONTAL | F5F6FA | r12 | p8 | gap:12 | MIN/MIN
+  imgRect   RECTANGLE | 86×86 FIXED | D8D9DE | r8
+  bodyFrame VERTICAL  | FILL×86 FIXED | pt4 | SPACE_BETWEEN
+    nameText  14px Medium | #171A26 | lineHeight:19 | FILL | HEIGHT
+    bottomFrame VERTICAL | FILL | HUG | gap:4
+      promoRow  HORIZONTAL | HUG | gap:4
+        promoTag  HORIZONTAL | HUG | p:2 3 | r2 | stroke 0.33px inside 30%opacity
+          tagText   10px Regular | HUG
+      priceAction HORIZONTAL | FILL×24 FIXED | SPACE_BETWEEN | CENTER
+        priceGrp  HORIZONTAL | HUG | gap:8 | BASELINE
+          priceText  16px Semibold | #FF0F23 | HUG
+          soldText   12px Regular  | #828794 | HUG
+        buyBtn    FRAME | 65×24 FIXED | r4 | 橙色占位
+```
+
+### 关键 API 规则
+
+- **FILL 必须在 `appendChild` 之后设置**，否则无效
+- **`resize(w, h)` 会重置为 FIXED**，之后需重新 `layoutSizingHorizontal = 'FILL'`
+- **页面切换**：每个脚本开头都要 `await relay.setCurrentPageAsync(page)`
+- **颜色范围**：0-1（不是 0-255）
+- **分批写入**：每批建议 ≤10 个节点，避免单次脚本过重
+
+### 已知与 HTML 版本的差异
+
+- **自营标签**：Relay 无 float 机制，暂用纯文字替代，按需手动补
+- **¥ 字号**：HTML 版 ¥ 12px + 数字 16px；Relay 版合并为单节点 16px Semibold
+- **购买按钮**：橙色矩形占位（65×24），需设计师替换为真实切图
+- **收藏图标**：需额外脚本，按需添加
+
+---
+
 ## 注意事项
 
-- **每次只生成 1 个方案**，文件名固定 `scheme-a.html`（用户确认后再做 B/C）
-- **SVG 资源**：只有 `收藏.svg` 和 `加购 & 购买按钮.svg` 需要 `<img>` 引用；自营、促销、服务标签一律纯 CSS 实现
-- **标题**：`tag-zying` 用 `float: left; margin-right: 4px; margin-top: 3px`，商品名用块级 `.h-name`（`word-break: break-word; line-height: 19px`）。行1文字绕 float（199px），行2回到左对齐（229px 全宽），`h-top` 用 `max-height: 38px; overflow: hidden` 限制两行
-- **垂直居中**：所有 badge/tag 必须加 `display: inline-flex; align-items: center`，不依赖 line-height 居中
-- **价格**：¥ 与数字 `gap: 0`，父容器 `align-items: baseline`
-- HTML 文件完全自包含（inline CSS），浏览器直接打开可预览
+- **每次只生成 1 个方案**，确认后再做变体
+- 写入完成后必须调用 `get_screenshot` 截图验证
+- 如遇节点不存在报错，先用 `get_design_metadata` 确认节点 ID

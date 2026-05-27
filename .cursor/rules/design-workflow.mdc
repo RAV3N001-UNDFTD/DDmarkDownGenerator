@@ -1,5 +1,5 @@
 ---
-description: JD AI 对话导购助手设计方案生成规范。用户描述场景时自动触发，输出符合规范的 HTML 方案文件。
+description: JD AI 对话导购助手设计方案生成规范。用户描述场景时自动触发，通过 zero-design MCP 直接写入 Relay。
 globs:
   - "schemes/**/*.html"
   - "design/**/*.md"
@@ -10,29 +10,31 @@ alwaysApply: true
 
 ## 项目说明
 
-本项目用于快速生成 JD AI 购物助手的回复设计方案。用户描述场景，按规范输出可在浏览器预览的 HTML 方案文件。
+本项目用于快速生成 JD AI 购物助手的回复设计方案。用户描述场景，agent 通过 **zero-design MCP（`use_design_script`）直接写入 Relay**，无需生成 HTML 中间文件。
 
 ## 快速开始
 
 用户说「生成一个 XX 场景的方案」时，执行：
 
-1. 读取 `design/ai-reply-design.md` 了解完整规范
+1. 确认目标 Relay 节点（用户提供链接，或沿用默认节点）
 2. 根据场景选择合适的组合模式（见下方「组合范式」）
-3. **只生成 1 个 HTML 文件**，放在 `schemes/[场景名]/scheme-a.html`
+3. 通过 `use_design_script` **分批写入 Relay**（每批建议 ≤10 节点操作）
+4. 写完后调用 `get_screenshot` 截图确认
+
+> HTML 备份可选：`schemes/[场景名]/scheme-a.html`，**不作为默认输出**。
+
+## 默认 Relay 目标
+
+- **fileKey**：`2059170750769684481` · **pageId**：`0:2`
+- 每次脚本开头：`await relay.setCurrentPageAsync(relay.root.children.find(p => p.id === '0:2'))`
 
 ## 文件结构
 
 ```
 对话流markdown/
 ├── design/ai-reply-design.md    ← 完整设计规范（必读）
-├── assets/                      ← SVG 切图资源
-│   ├── 收藏.svg                  16×16
-│   ├── 加购 & 购买按钮.svg        65×24（split button）
-│   ├── 自营标签.svg               26×14（备用，现用纯 CSS）
-│   ├── 促销标.svg                 56×14（备用，现用纯 CSS）
-│   ├── 服务标签1.svg              42×14（备用，现用纯 CSS）
-│   └── 服务标签2.svg              46×14（备用，现用纯 CSS）
-└── schemes/[场景名]/scheme-a.html
+├── assets/                      ← SVG 切图资源（HTML 备份用）
+└── schemes/[场景名]/scheme-a.html  ← 可选 HTML 备份
 ```
 
 ## 页面基础
@@ -81,7 +83,7 @@ position: relative; overflow: hidden;
 ### 内容区（右，flex:1）
 ```css
 height: 86px; padding-top: 4px;
-display: flex; flex-direction: column; justify-content: space-between;
+display: flex; flex-direction: column;
 ```
 
 #### 上部分：标题
@@ -151,7 +153,7 @@ tag `float: left`，商品名单字段自然绕排：
 </div>
 ```
 ```css
-.h-price-action { display: flex; align-items: center; justify-content: space-between; }
+.h-price-action { display: flex; align-items: center; justify-content: space-between; height: 24px; }
 .h-price { display: flex; align-items: baseline; gap: 8px; }
 .price { display: flex; align-items: baseline; gap: 0; } /* gap 必须为 0 */
 .price-sym { font-size: 12px; font-weight: 600; line-height: 14px; color: #FF0F23; }
@@ -167,14 +169,56 @@ tag `float: left`，商品名单字段自然绕排：
 | B：文本 + 三列竖卡 | 多商品快速视觉扫描 | `text_block → vertical_card_3col` |
 | C：分段文本交替卡 | 每款有独立推荐理由 | `[H2+body] → card` 循环 |
 
-间距规则：文本块 ↔ 卡片块 **24px**；多横卡之间 **10px**；卡片内部 **6px / 5px**
+间距规则：文本块 ↔ 卡片块 **24px**；多横卡之间 **10px**；标题↔promo **6px**（h-bottom margin-top:6px），promo↔价格 **4px**（h-bottom gap:4px）
+
+## Relay 写入规范
+
+### Design Tokens（颜色值 0-1）
+
+| 用途 | Hex | Relay color |
+|------|-----|-------------|
+| 主文字 | #171A26 | `{r:0.0902,g:0.1020,b:0.1490}` |
+| 正文 | #3D414D | `{r:0.2392,g:0.2549,b:0.3020}` |
+| 价格/促销红 | #FF0F23 | `{r:1,g:0.059,b:0.137}` |
+| 服务标签棕 | #B5691A | `{r:0.710,g:0.412,b:0.102}` |
+| 已售灰 | #828794 | `{r:0.510,g:0.529,b:0.580}` |
+| 卡片背景 | #F5F6FA | `{r:0.9608,g:0.9647,b:0.9804}` |
+| 图片占位 | #D8D9DE | `{r:0.847,g:0.851,b:0.871}` |
+
+### 商品横卡节点结构
+
+```
+cardWrap  HORIZONTAL | F5F6FA | r12 | p8 | gap:12
+  imgRect   86×86 FIXED | D8D9DE | r8
+  bodyFrame FILL×86 FIXED | pt4 | SPACE_BETWEEN
+    nameText  14px Medium | FILL | textAutoResize:HEIGHT
+    bottomFrame VERTICAL | FILL | HUG | gap:4
+      promoRow  HORIZONTAL | HUG | gap:4
+        promoTag  HORIZONTAL | p:2 3 | r2 | stroke 0.33px inside 30%
+          tagText   10px Regular
+      priceAction HORIZONTAL | FILL×24 FIXED | SPACE_BETWEEN
+        priceGrp  HORIZONTAL | HUG | gap:8 | BASELINE
+          priceText  16px Semibold | #FF0F23
+          soldText   12px Regular  | #828794
+        buyBtn    65×24 FIXED | r4 | 橙色占位
+```
+
+### 关键 API 规则
+
+- **FILL 必须在 `appendChild` 之后设置**
+- **`resize()` 会重置为 FIXED**，之后需重新设 `layoutSizingHorizontal = 'FILL'`
+- 颜色范围 **0-1**（非 0-255）
+- 分批写入，每批建议 **≤10 个节点**
+
+### 与 HTML 版本的已知差异
+
+- 自营标签：Relay 无 float，暂用文字替代
+- ¥ 字号：合并为单节点 16px（HTML 版 ¥ 12px + 数字 16px）
+- 购买按钮：橙色矩形占位，需设计师替换
+- 收藏图标：按需额外脚本添加
 
 ## 注意事项（避坑）
 
-- **每次只生成 1 个方案**，用户确认后再做其他变体
-- SVG 资源：只有 `收藏.svg` 和 `加购 & 购买按钮.svg` 用 `<img>` 引用；自营/促销/服务标签一律纯 CSS
-- 标题：`tag-zying` 用 `float: left; margin-right: 4px; margin-top: 3px`；`.h-name` 块级绕排，行2与 tag 左对齐；`h-top` 用 `max-height: 38px; overflow: hidden` 限制两行
-- 所有 badge/tag：必须 `display: inline-flex; align-items: center` 才能垂直居中，不依赖 line-height
-- 价格：¥ 与数字 `gap: 0`，父容器 `align-items: baseline`
-- 收藏 SVG wrapper：只加 `backdrop-filter`，**不加 background / padding**（SVG 自带背景）
-- HTML 文件完全自包含（inline CSS），浏览器直接打开可预览
+- **每次只生成 1 个方案**，确认后再做变体
+- 写入完成后必须 `get_screenshot` 截图验证
+- 遇节点报错先用 `get_design_metadata` 确认节点 ID
