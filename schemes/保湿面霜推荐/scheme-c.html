@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<!-- 方案C · 分段文本 + 单商品横卡交替（3组）
+     组合模式：[H2 + body] → card → [H2 + body] → card → [H2 + body] → card
+     适用：逐个详细介绍，每款商品有独立推荐理由 -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>方案C · 分段文本 + 横卡交替</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --text-primary:   #171A26;
+      --text-body:      #3D414D;
+      --text-hint:      #9B9EA8;
+      --price:          #FF0F23;
+      --card-bg:        #F5F6FA;
+      --page-bg:        #FFFFFF;
+      --tag-red-bg:     #FF0F23;
+      --tag-red-text:   #FFFFFF;
+      --promo-text:     #FF6600;
+      --font:           "PingFang SC", -apple-system, "Helvetica Neue", sans-serif;
+    }
+
+    body {
+      background: #EDEDED;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 0 48px;
+      font-family: var(--font);
+    }
+    .label {
+      width: 375px;
+      margin-bottom: 12px;
+      font-size: 11px;
+      color: #888;
+      letter-spacing: 0.4px;
+    }
+    .label strong { color: #333; font-size: 13px; }
+
+    .output {
+      width: 375px;
+      background: var(--page-bg);
+      padding: 16px;
+    }
+
+    /* ── Markdown ── */
+    .md-h1 {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 28px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .md-h2 {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 24px;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .md-p {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 24px;
+      color: var(--text-body);
+    }
+
+    /* 间距 */
+    .gap  { height: 24px; }
+
+    /* ── 卡片 ── */
+    .card-wrap {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 8px;
+    }
+    .h-card {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .h-img {
+      width: 86px;
+      height: 86px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      background: #D8D9DE;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .h-img svg { opacity: 0.45; }
+    .h-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .h-title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    .tag-zying {
+      flex-shrink: 0;
+      margin-top: 2px;
+      background: var(--tag-red-bg);
+      color: var(--tag-red-text);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 4px;
+      border-radius: 2px;
+      line-height: 14px;
+    }
+    .h-name {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      color: var(--text-primary);
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+    .h-promos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .promo {
+      font-size: 10px;
+      color: var(--promo-text);
+      border: 0.5px solid var(--promo-text);
+      border-radius: 2px;
+      padding: 0 4px;
+      line-height: 16px;
+      white-space: nowrap;
+    }
+    .h-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .h-price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .price {
+      display: flex;
+      align-items: baseline;
+      gap: 1px;
+      color: var(--price);
+    }
+    .price-sym { font-size: 12px; font-weight: 600; }
+    .price-num { font-size: 16px; font-weight: 600; line-height: 1.2; }
+    .sold { font-size: 11px; color: var(--text-hint); }
+    .h-actions { display: flex; gap: 6px; align-items: center; }
+    .btn-add {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--price);
+      background: white;
+      color: var(--price);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .btn-buy {
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 12px;
+      background: var(--price);
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="label"><strong>方案 C</strong> &nbsp;·&nbsp; 分段文本 + 横卡交替（[H2+body] → card × 3）</div>
+
+<div class="output">
+
+  <div class="md-h1">为你精选保湿面霜</div>
+
+  <!-- ── 第1组 ── -->
+  <div class="gap"></div>
+  <div class="md-h2">首推·综合修护</div>
+  <p class="md-p">DW高效保湿面霜是雅诗兰黛明星单品，深层补水同时修护肌肤屏障，适合干性及混合肌。</p>
+  <div class="gap"></div>
+
+  <div class="card-wrap">
+    <div class="h-card">
+      <div class="h-img">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#888">
+          <path d="M12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/>
+        </svg>
+      </div>
+      <div class="h-body">
+        <div class="h-title-row">
+          <span class="tag-zying">自营</span>
+          <span class="h-name">雅诗兰黛 DW高效保湿面霜 50ml</span>
+        </div>
+        <div class="h-promos">
+          <span class="promo">满200减20</span>
+          <span class="promo">7天价保</span>
+          <span class="promo">闪电退款</span>
+        </div>
+        <div class="h-bottom">
+          <div class="h-price-row">
+            <div class="price"><span class="price-sym">¥</span><span class="price-num">890</span></div>
+            <span class="sold">已售1万+</span>
+          </div>
+          <div class="h-actions">
+            <div class="btn-add">+</div>
+            <button class="btn-buy">购买</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第2组 ── -->
+  <div class="gap"></div>
+  <div class="md-h2">质地轻盈</div>
+  <p class="md-p">菁纯甜蜜滋养霜质地轻薄不黏腻，保湿同时兼顾提亮，适合混合偏油肌日常使用。</p>
+  <div class="gap"></div>
+
+  <div class="card-wrap">
+    <div class="h-card">
+      <div class="h-img">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#888">
+          <path d="M12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/>
+        </svg>
+      </div>
+      <div class="h-body">
+        <div class="h-title-row">
+          <span class="tag-zying">自营</span>
+          <span class="h-name">兰蔻菁纯甜蜜滋养霜 50ml 补水轻盈</span>
+        </div>
+        <div class="h-promos">
+          <span class="promo">满200减20</span>
+          <span class="promo">7天价保</span>
+        </div>
+        <div class="h-bottom">
+          <div class="h-price-row">
+            <div class="price"><span class="price-sym">¥</span><span class="price-num">450</span></div>
+            <span class="sold">已售5000+</span>
+          </div>
+          <div class="h-actions">
+            <div class="btn-add">+</div>
+            <button class="btn-buy">购买</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第3组 ── -->
+  <div class="gap"></div>
+  <div class="md-h2">高性价比</div>
+  <p class="md-p">科颜氏这款容量大、成分简洁，日常底霜的好选择，预算有限的情况下首推。</p>
+  <div class="gap"></div>
+
+  <div class="card-wrap">
+    <div class="h-card">
+      <div class="h-img">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#888">
+          <path d="M12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/>
+        </svg>
+      </div>
+      <div class="h-body">
+        <div class="h-title-row">
+          <span class="tag-zying">自营</span>
+          <span class="h-name">科颜氏高保湿面霜 200ml 美版大容量</span>
+        </div>
+        <div class="h-promos">
+          <span class="promo">满200减20</span>
+          <span class="promo">闪电退款</span>
+        </div>
+        <div class="h-bottom">
+          <div class="h-price-row">
+            <div class="price"><span class="price-sym">¥</span><span class="price-num">320</span></div>
+            <span class="sold">已售3万+</span>
+          </div>
+          <div class="h-actions">
+            <div class="btn-add">+</div>
+            <button class="btn-buy">购买</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+  <p class="md-p">三款都有不错的口碑，有具体偏好或肤质问题可以告诉我，帮你进一步筛选～</p>
+
+</div>
+</body>
+</html>
