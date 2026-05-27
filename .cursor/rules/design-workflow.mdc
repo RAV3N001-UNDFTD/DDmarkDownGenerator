@@ -169,7 +169,18 @@ tag `float: left`，商品名单字段自然绕排：
 | B：文本 + 三列竖卡 | 多商品快速视觉扫描 | `text_block → vertical_card_3col` |
 | C：分段文本交替卡 | 每款有独立推荐理由 | `[H2+body] → card` 循环 |
 
-间距规则：文本块 ↔ 卡片块 **24px**；多横卡之间 **10px**；标题↔promo **6px**（h-bottom margin-top:6px），promo↔价格 **4px**（h-bottom gap:4px）
+**间距规则（研发实现值）**：文字行高自带上下各约 6px 留白，以下为实际开发值：
+
+| 位置 | 研发值 | 视觉感知 |
+|------|--------|---------|
+| 文本块 / COT 底部 margin | **13px** | ≈ 一级间距 24px |
+| H2 标题 顶部 margin | **7px** | ≈ 一级间距 24px |
+| 商品卡 顶部 margin | **3px** | 卡紧接正文 |
+| 商品卡 底部 margin | **3px** | 卡与下方内容收尾 |
+| 横卡之间 gap | **10px** | 多卡堆叠 |
+| H2 → 正文 / 正文 → 正文 | **6px** | ≈ 二级间距 16px |
+
+Relay 写入时：主容器 `itemSpacing: 13`；文本↔卡 用 `paddingBottom/marginTop` 而非统一 itemSpacing
 
 ## Relay 写入规范
 
@@ -188,34 +199,51 @@ tag `float: left`，商品名单字段自然绕排：
 ### 商品横卡节点结构
 
 ```
-cardWrap  HORIZONTAL | F5F6FA | r12 | p8 | gap:12
-  imgRect   86×86 FIXED | D8D9DE | r8
-  bodyFrame FILL×86 FIXED | pt4 | SPACE_BETWEEN
-    nameText  14px Medium | FILL | textAutoResize:HEIGHT
-    bottomFrame VERTICAL | FILL | HUG | gap:4
-      promoRow  HORIZONTAL | HUG | gap:4
-        promoTag  HORIZONTAL | p:2 3 | r2 | stroke 0.33px inside 30%
-          tagText   10px Regular
-      priceAction HORIZONTAL | FILL×24 FIXED | SPACE_BETWEEN
-        priceGrp  HORIZONTAL | HUG | gap:8 | BASELINE
-          priceText  16px Semibold | #FF0F23
-          soldText   12px Regular  | #828794
-        buyBtn    65×24 FIXED | r4 | 橙色占位
+cardWrap    HORIZONTAL | F5F6FA | r12 | p8 | gap:12
+  imgFrame  FRAME | 86×86 FIXED | D8D9DE | r8 | clipsContent
+    collectWrap  FRAME | p:3 | bg:rgba(0,0,0,0.16) | r4 | backdrop-blur | absolute top:4 left:4
+      collectIcon  10×10 矩形占位
+  bodyFrame   VERTICAL | FILL×86 FIXED | pt4 | SPACE_BETWEEN
+    titleArea   VERTICAL | FILL | HUG | gap:5
+      titleRow1   HORIZONTAL | FILL | HUG | gap:4 | CENTER
+        ziyingTag   HORIZONTAL | HUG×14 | p:2 3 | r2 | #FF0F23
+          tagText     "自营" 10px Semibold white
+        nameRow1    14px Medium | #171A26 | lineHeight:14 | FILL
+      nameRow2    14px Medium | #171A26 | lineHeight:14 | FILL
+    bottomFrame   VERTICAL | FILL | HUG | gap:6
+      promoRow    HORIZONTAL | HUG | gap:4
+        promoTag    HORIZONTAL | HUG | p:2 3 | r2 | clipsContent | stroke 0.33px inside 30%opacity | primaryAxis:MIN
+          tagText     10px Regular | lineHeight:9
+      priceAction   HORIZONTAL | FILL | HUG | SPACE_BETWEEN | CENTER
+        priceGrp    HORIZONTAL | HUG | gap:8 | FLEX_END
+          priceNumWrap  HORIZONTAL | HUG | FLEX_END
+            symText   "¥" 12px Semibold #FF0F23 lineHeight:14
+            numText   price 16px Semibold #FF0F23 lineHeight:14
+          soldText    12px Regular | #828794 | lineHeight:12
+        splitBtn    HORIZONTAL | HUG | CENTER
+          addBtn    FRAME | 24×20 FIXED | white | r-tl:6 r-bl:6
+            iconCircle  FRAME | 24×24 | transparent | r:24 | absolute x:0 y:-2
+              cartIcon  RECT 14.4×14.4 | absolute x:4.8 y:4.8 | SVG占位
+          buyBtn    FRAME | HUG×20 FIXED | px:8 py:6 | #FF0F23 | r-tr:6 r-br:6 | clipsContent
+            buyText   "购买" 12px Medium/500 white lineHeight:12
 ```
 
 ### 关键 API 规则
 
 - **FILL 必须在 `appendChild` 之后设置**
-- **`resize()` 会重置为 FIXED**，之后需重新设 `layoutSizingHorizontal = 'FILL'`
+- **`resize(w,h)` 会将两个维度都重置为 FIXED**：
+  - HUG 帧直接不调 `resize()`，只设 `primaryAxisSizingMode = 'AUTO'`
+  - 若必须 `resize()`，之后重新设 `primaryAxisSizingMode = 'AUTO'`
+  - FILL 维度：`appendChild` 后设 `layoutSizingHorizontal/Vertical = 'FILL'`
 - 颜色范围 **0-1**（非 0-255）
 - 分批写入，每批建议 **≤10 个节点**
 
-### 与 HTML 版本的已知差异
+### Relay 脚本实现说明
 
-- 自营标签：Relay 无 float，暂用文字替代
-- ¥ 字号：合并为单节点 16px（HTML 版 ¥ 12px + 数字 16px）
-- 购买按钮：橙色矩形占位，需设计师替换
-- 收藏图标：按需额外脚本添加
+- **自营标签**：titleRow1 内独立 Frame，不用 float
+- **¥ 字号**：symText(12px) + numText(16px) 两节点放入 FLEX_END 横向 Frame
+- **分体按钮**：addBtn(白24×20) + buyBtn(红HUG×20) 并排无 gap
+- **收藏图标**：collectWrap 需 `absolutePosition=true` 后设 x/y
 
 ## 注意事项（避坑）
 
