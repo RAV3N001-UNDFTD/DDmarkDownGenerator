@@ -353,7 +353,7 @@ btn.counterAxisSizingMode = 'FIXED';    // 高度维持 20px
 - **自营/促销/服务标签**：`clipsContent = true`；文字 lineHeight 设 9；`primaryAxisAlignItems = 'MIN'`
 - **¥ 字号**：用两个文字节点（symText 12px + numText 16px）放入 `counterAxisAlignItems:'MAX'` 横向 Frame
 - **收藏图标**：collectWrap 设 x/y 后自动 absolutePosition；icon 10×10 矩形占位
-- **addBtn 购物车图标**：在 addBtn 内创建透明 24×24 圆形 Frame（y:-2），其内放 14.4×14.4 矩形占位（x:4.8, y:4.8）
+- **addBtn 购物车图标**：在 addBtn 内创建透明 24×24 圆形 Frame（y:-2），其内用 `relay.createNodeFromSvg(svgString)` 创建购物车矢量节点（14.4×14.4，x:4.8, y:4.8）；SVG 路径在 `assets/购物车.svg`
 - **buyBtn**：`clipsContent = true`，高度固定 20px，paddingTop/Bottom:6（内容被 clip 截齐）
 - **splitBtn**：addBtn + buyBtn 并排，itemSpacing:0，无 gap
 - **收藏图标**：需额外脚本，按需添加
