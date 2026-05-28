@@ -229,10 +229,16 @@ promo_tag_brown:                        # 7天价保 / 闪电退款（同 spec�
 price_symbol: { chars: "¥",   font: price_sym }
 price_number: { chars: "215", font: price_num }
 sold:         { chars: "已售1万+", font: sold }
+# ⚠ 字符串字面值原样使用，不要按"中英数字混排"加空格：
+#   "已售1万+" ✓     "已售 1 万+" ✗
+#   "¥215"   ✓     "¥ 215"     ✗
 
-price_num_wrap:                         # ¥ 与数字底对齐
-  layout: HORIZONTAL  hug  counterAxisAlignItems: MAX
+price_num_wrap:                         # ¥ 与数字底对齐 + 紧贴无间距
+  layout: HORIZONTAL  hug  itemSpacing: 0  counterAxisAlignItems: MAX
   children: [price_symbol, price_number]
+# ⚠ itemSpacing=0 不能写进 createAutoLayout props（会失效，详见 relay-api.md §1.5）
+#   必须 append 后单独设：priceNumWrap.itemSpacing = 0
+#   不设 → 默认 10 → ¥ 和数字之间出现间隙，露出背景色
 
 split_button:
   add_btn:

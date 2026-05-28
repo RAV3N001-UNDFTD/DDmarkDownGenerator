@@ -408,10 +408,15 @@ parent.appendChild(cartIcon)
 - [ ] 自营 / 促销 / 服务标签：`clipsContent=true`、文字 `lineHeight=9`、`primaryAxisAlignItems='MIN'`
 - [ ] `nameRow1` 设 `maxLines=1` + `textTruncation='ENDING'`（防止折行撑高 titleArea → SPACE_BETWEEN 错位）
 - [ ] ¥ 与数字底对齐：`priceNumWrap` 设 `counterAxisAlignItems='MAX'`
+- [ ] **`priceNumWrap.itemSpacing = 0`（append 后单独设）**：¥ 与数字紧贴无间隙，否则会露出红色背景缝隙
+- [ ] **`splitBtn.itemSpacing = 0`（append 后单独设）**：addBtn + buyBtn 紧贴
 - [ ] `addBtn` 内 `iconCircle`：transparent、`absolute x:0 y:-2`、SVG 14.4×14.4 @ (4.8, 4.8)
 - [ ] `buyBtn`：`clipsContent=true`、高度固定 20、padding 6/8
-- [ ] `splitBtn`：`itemSpacing=0`、addBtn + buyBtn 紧贴
 - [ ] 收藏 wrapper：`absolute top:4 left:4`、`padding:3`、`backdrop_blur:4`
+
+**文本内容（chars）写法**
+- [ ] 数字两侧 / 货币符号后 **不加空格**：`"已售1万+"` ✓ / `"已售 1 万+"` ✗、`"¥215"` ✓ / `"¥ 215"` ✗
+- [ ] 字符串字面值原样使用，不要按「中英数字混排」做排版美化
 
 **收尾**
 - [ ] 写入完成调用 `get_screenshot` 验证视觉
