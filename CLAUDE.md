@@ -130,8 +130,10 @@ display: flex; flex-direction: column;
   white-space: nowrap;
 }
 
-/* 商品名两行：14px Medium，line-height 14px */
-.h-name1 { flex: 1; font-size: 14px; font-weight: 500; line-height: 14px; color: #171A26; }
+/* 商品名：14px Medium，line-height 14px */
+/* h-name1 单行截断（防止折行撑高 titleArea，导致 SPACE_BETWEEN 布局错位） */
+.h-name1 { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; line-height: 14px; color: #171A26;
+           overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .h-name2 { width: 100%; font-size: 14px; font-weight: 500; line-height: 14px; color: #171A26; }
 ```
 
@@ -231,7 +233,9 @@ display: flex; flex-direction: column;
 |------|----------|------|
 | A：文本 + 横卡列表 | 多商品快速浏览对比 | `text_block → card×N`，卡间距 10px |
 | B：文本 + 三列竖卡 | 多商品快速视觉扫描 | `text_block → vertical_card_3col` |
-| C：分段文本交替卡 | 每款有独立推荐理由 | `[H2+body] → card` 循环 |
+| C：分段文本交替卡 | 每款有独立推荐理由 | `[H1+body] → card` 循环 |
+
+> **标题层级规则**：AI 回复中的段落/思路标题（如"思路一：..."、"推荐款一："等）统一使用 **H1**（16px Semibold，lineHeight:28），不使用 H2。H2（14px Semibold，lineHeight:24）仅用于副标题或商品名等次级场景。
 
 **间距规则（研发实现值）**：
 
@@ -240,7 +244,7 @@ display: flex; flex-direction: column;
 | 位置 | 研发值 | 行高各端贡献 | 视觉感知 |
 |------|--------|-------------|---------|
 | 文本块 / COT 底部 margin | **13px** | +6px | ≈ 一级间距 24px |
-| H2 标题 顶部 margin | **7px** | +6px | ≈ 一级间距 24px |
+| H1 标题 顶部 margin | **7px** | +6px | ≈ 一级间距 24px |
 | 商品卡 顶部 margin | **3px** | +6px | 卡紧接正文 |
 | 商品卡 底部 margin | **3px** | +6px | 卡与下方内容收尾 |
 | 横卡之间 gap | **10px** | — | 多卡堆叠间距 |
@@ -300,7 +304,7 @@ cardWrap    HORIZONTAL | F5F6FA | r12 | p8 | gap:12
       titleRow1   HORIZONTAL | FILL | HUG | gap:4 | counterAxis:CENTER
         ziyingTag   HORIZONTAL | HUG | p:2 3 | r2 | #FF0F23 | clipsContent | primaryAxis:MIN
           tagText     "自营" 10px Semibold white | lineHeight:9
-        nameRow1    14px Medium | #171A26 | lineHeight:14 | FILL
+        nameRow1    14px Medium | #171A26 | lineHeight:14 | FILL | maxLines:1 | textTruncation:ENDING
       nameRow2    14px Medium | #171A26 | lineHeight:14 | FILL
     bottomFrame   VERTICAL | FILL | HUG | gap:6
       promoRow    HORIZONTAL | HUG | gap:4
@@ -330,26 +334,51 @@ cardWrap    HORIZONTAL | F5F6FA | r12 | p8 | gap:12
 - **页面切换**：每个脚本开头都要 `await relay.setCurrentPageAsync(page)`
 - **颜色范围**：0-1（不是 0-255）
 - **分批写入**：每批建议 ≤10 个节点，避免单次脚本过重
+- **HORIZONTAL 帧不要设 `counterAxisSizingMode = 'FIXED'`（除非先 resize 确定高度）**：
+  - `createAutoLayout('HORIZONTAL')` 的 counterAxis = 高度，默认 AUTO（HUG）
+  - 若设为 `FIXED` 而未调 `resize()`，高度会卡在 `createAutoLayout` 默认值（通常 100px），导致布局爆框
+  - **正确做法**：HORIZONTAL 行只保留 AUTO 高度，不主动设 counterAxisSizingMode = 'FIXED'
+- **`maxLines` / `textTruncation` 需在 `appendChild` + FILL 之后设置**：
+  - 若在 append 前设置，文字宽度为 0，截断计算结果为空字符串，文字不可见
+  - 正确顺序：`parent.appendChild(node)` → `node.layoutSizingHorizontal = 'FILL'` → `node.textAutoResize = 'HEIGHT'` → `node.maxLines = 1` → `node.textTruncation = 'ENDING'`
 
 ```javascript
-// ✅ 正确模式：HUG 帧不调 resize()
-const frame = relay.createFrame();
-frame.layoutMode = 'VERTICAL';
-frame.primaryAxisSizingMode = 'AUTO';   // HUG height
-frame.counterAxisSizingMode = 'FIXED';  // width 由 FILL 覆盖
+// ✅ 正确：VERTICAL HUG 容器（width FILL）
+const frame = relay.createAutoLayout('VERTICAL');
+frame.counterAxisSizingMode = 'FIXED';  // width → 由 FILL 接管
 frame.itemSpacing = 6;
 parent.appendChild(frame);
-frame.layoutSizingHorizontal = 'FILL';  // FILL width
+frame.layoutSizingHorizontal = 'FILL';
 
-// ✅ 正确模式：需要固定尺寸时，resize() 之后再设 AUTO
-const btn = relay.createFrame();
+// ✅ 正确：HORIZONTAL 行 — 不设 counterAxisSizingMode（保持 AUTO = HUG height）
+const row = relay.createAutoLayout('HORIZONTAL');
+row.itemSpacing = 4;
+// ❌ 不要写 row.counterAxisSizingMode = 'FIXED' — 会锁定在默认 100px 高度！
+parent.appendChild(row);
+row.layoutSizingHorizontal = 'FILL';
+
+// ✅ 正确：需要固定高度时，resize() 之后再设 AUTO
+const btn = relay.createAutoLayout('HORIZONTAL');
 btn.resize(10, 20);                     // 先固定高度 20
-btn.primaryAxisSizingMode = 'AUTO';     // 再设宽度 HUG（必须在 resize 之后）
+btn.primaryAxisSizingMode = 'AUTO';     // resize 之后再设 HUG width
 btn.counterAxisSizingMode = 'FIXED';    // 高度维持 20px
+
+// ✅ 正确：单行截断文字（maxLines 必须在 FILL 之后设置）
+const nr1 = relay.createText();
+nr1.characters = '商品名称';
+nr1.fontName = { family:'PingFang SC', style:'Medium' };
+nr1.fontSize = 14; nr1.lineHeight = { value:14, unit:'PIXELS' };
+nr1.fills = [{ type:'SOLID', color: PRIMARY }];
+parent.appendChild(nr1);               // 1. 先 append
+nr1.layoutSizingHorizontal = 'FILL';   // 2. 再设 FILL（宽度确定）
+nr1.textAutoResize = 'HEIGHT';         // 3. 再设 textAutoResize
+nr1.maxLines = 1;                      // 4. 再设 maxLines
+nr1.textTruncation = 'ENDING';         // 5. 最后设 truncation
 ```
 
 ### Relay 脚本实现说明
 
+- **透明 Frame**：所有不需要背景色的容器必须显式设 `fills = []`，否则 Relay 默认填白色。makeCard 中需要清除的帧包括：`bodyFrame`、`titleArea`、`titleRow1`（tr1）、`bottomFrame`（botF）、`promoRow`、`priceAction`（pa）、`priceGrp`（pg）、`priceNumWrap`（pnw）、`splitBtn`；section 容器 `sec`、`txtBlk`、`cards` 也需要 `fills = []`
 - **自营/促销/服务标签**：`clipsContent = true`；文字 lineHeight 设 9；`primaryAxisAlignItems = 'MIN'`
 - **¥ 字号**：用两个文字节点（symText 12px + numText 16px）放入 `counterAxisAlignItems:'MAX'` 横向 Frame
 - **收藏图标**：collectWrap 设 x/y 后自动 absolutePosition；icon 10×10 矩形占位
