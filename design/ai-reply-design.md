@@ -442,6 +442,10 @@ root                  VERTICAL | itemSpacing=13 | padding=16 | fills=WHITE | wid
 | `fills` | WHITE `{r:1,g:1,b:1}` | 默认透明 → 没白底，与对话气泡背景融合 |
 | `width` | 375（顶层 resize） | 节点被 HUG 撑成内容宽度 → 文本折成单字宽度 |
 
+⚠⚠ **关键陷阱**：`relay.createAutoLayout('VERTICAL', { padding: 16, itemSpacing: 13 })` 这种 props 写法**会被静默丢弃**！实测香奈儿-v2 agent 严格按骨架建了 section_wrapper / title_block，但所有 padding 和 itemSpacing 写在 props 里全部失效，整稿仍然塌陷。
+
+**铁律**：`createAutoLayout()` **只传 direction**；所有属性必须 `appendChild` 之后单独赋值或用 `node.set({...})`。详见 [relay-api.md §1.5](./relay-api.md)。每段骨架代码模板都在 relay-api.md §4 里给好了，**直接复制改字，不要二次发明 props 写法**。
+
 ### 5.2 transparent wrapper Frame 必清 `fills`
 
 所有 wrapper 类（intro_block / section_wrapper / title_block / cards_block / 商品卡内的 titleArea / bottomFrame / promoRow / priceAction / priceGrp / priceNumWrap / splitBtn）必须显式设 `fills = []`，否则 Relay 默认填白色会盖掉父背景（虽然 root 也是白，但 card_bg 区域会被盖）。

@@ -38,37 +38,57 @@ await relay.setCurrentPageAsync(page)
 
 Relay color 用 **0-1 范围**（不是 0-255）。完整 token 见 [ai-reply-design.md §1.1](./ai-reply-design.md)。
 
-### 1.5 ⚠ createAutoLayout 的 props 参数会静默丢弃部分属性
+### 1.5 ⚠⚠ createAutoLayout 的 props 参数**几乎所有属性都不可靠**
 
-`relay.createAutoLayout(direction, props)` 的 `props` 对象**只可靠地接收 layoutMode / padding / itemSpacing / cornerRadius / primaryAxisAlignItems / counterAxisAlignItems** 等基础布局属性。以下属性在 props 里**会被静默丢弃**（已实测，2026-05 冒烟测试发现）：
+`relay.createAutoLayout(direction, props)` 的 `props` 对象在实测中**会静默丢弃几乎所有属性**，包括过去以为"可靠"的 padding / itemSpacing。SKILL.md 给的 props 示例**在 Relay 实际实现里不工作**。
 
+**唯一可靠的参数**：`direction`（第一个参数字符串 `'VERTICAL'` / `'HORIZONTAL'`）
+
+**所有其它属性必须 `appendChild` 之后单独赋值**，包括但不限于：
+- `padding` 系列：`paddingLeft` / `paddingRight` / `paddingTop` / `paddingBottom`
+- `itemSpacing`（默认 10，不设就是 10）
 - `fills` / `strokes` / `strokeWeight` / `strokeAlign`
-- `name`
-- `width` / `height`
-- `clipsContent`（不可靠，建议单独设）
+- `name` / `width` / `height` / `cornerRadius`
+- `primaryAxisAlignItems` / `counterAxisAlignItems`
+- `clipsContent`
 
-⚠ SKILL.md 示例里写了 `createAutoLayout({ name: 'Card', ... })`，但实际 Relay 实现里 name 不会生效。**所有上述属性必须 `appendChild` 之后单独赋值。**
+⚠ 这是 v3 文档发布后真实发现的：v2 香奈儿方案 agent 严格按 §4 骨架建了 section_wrapper / title_block，但 props 里写的 `itemSpacing: 3` 全部失效，root.padding 也全部失效 → 间距全塌成默认 10，整稿仍然贴边局促。
+
+**正确写法（强制模板）**：
 
 ```javascript
-// ❌ 错：fills / name 被丢，buyBtn 实际白底 → 白底白字 → "购买" 不可见
-const buyBtn = relay.createAutoLayout('HORIZONTAL', {
-  name: 'buyBtn',
-  fills: [{ type: 'SOLID', color: PRICE }],
-  itemSpacing: 0,
+// ❌ 错（props 里所有属性都会丢）
+const root = relay.createAutoLayout('VERTICAL', {
+  paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 16,
+  itemSpacing: 13,
+  fills: [{ type: 'SOLID', color: WHITE }],
 })
 
-// ✅ 对：基础布局属性放 props 没问题，但 fills / name / itemSpacing 一律单独设
-const buyBtn = relay.createAutoLayout('HORIZONTAL', {
-  paddingLeft: 8, paddingRight: 8, paddingTop: 6, paddingBottom: 6,
-  primaryAxisAlignItems: 'CENTER', counterAxisAlignItems: 'CENTER',
+// ✅ 对（createAutoLayout 只传 direction，其它一律 append 后赋值）
+const root = relay.createAutoLayout('VERTICAL')
+page.appendChild(root)
+root.name = '场景名'
+root.paddingLeft = 16
+root.paddingRight = 16
+root.paddingTop = 16
+root.paddingBottom = 16
+root.itemSpacing = 13
+root.fills = [{ type: 'SOLID', color: WHITE }]
+// ... 其它属性
+
+// 🟡 等价的紧凑写法：用 node.set({...}) 批量赋值（set 是可靠的）
+const root2 = relay.createAutoLayout('VERTICAL')
+page.appendChild(root2)
+root2.set({
+  name: '场景名',
+  paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 16,
+  itemSpacing: 13,
+  fills: [{ type: 'SOLID', color: WHITE }],
 })
-parent.appendChild(buyBtn)
-buyBtn.name = 'buyBtn'
-buyBtn.fills = [{ type: 'SOLID', color: PRICE }]
-buyBtn.itemSpacing = 0
 ```
 
-> 「布局相关属性」与「视觉/标识属性」分离写：前者可放 props，后者单独赋值。
+> **铁律：`createAutoLayout()` 只传 direction；属性走 append 后赋值或 `.set({...})`。**
+> 这是 Relay 写入最容易翻车的点 —— 即使按规范建了正确的节点结构，属性没生效照样全塌。
 
 ### 1.6 顶层节点定位（避开 0,0）
 
@@ -166,24 +186,42 @@ nr1.textTruncation = 'ENDING'            // 5. 最后设 truncation
 
 ### 4.1 主容器（每次写入的根节点，顶层节点）
 
+⚠ **createAutoLayout 只传 direction，所有属性 append 后再设**（详见 §1.5）
+
 ```javascript
 const { x: originX, y: originY } = nextTopLevelOrigin()  // §1.6
 
-// props 只放可靠属性：layoutMode + padding + itemSpacing
-const root = relay.createAutoLayout('VERTICAL', {
-  paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 16,
-  itemSpacing: 13,                             // section_gap 研发值（视觉≈24）
-})
+const root = relay.createAutoLayout('VERTICAL')
 page.appendChild(root)
 
-// 其余属性 append 后单独赋值（§1.5 createAutoLayout props 陷阱）
-root.name = '场景名'
-root.fills = [{ type: 'SOLID', color: { r:1, g:1, b:1 } }]
+// 必带四属性：padding / itemSpacing / fills / 宽度（缺一就塌）
+root.set({
+  name: '场景名',
+  paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 16,
+  itemSpacing: 13,                             // section_gap 研发值（视觉≈24）
+  fills: [{ type: 'SOLID', color: { r:1, g:1, b:1 } }],
+})
 root.resize(375, root.height)                  // ⚠ 顶层节点必须 resize 设固定宽
 root.primaryAxisSizingMode = 'AUTO'            // resize 后重设高度 HUG
 root.counterAxisSizingMode = 'FIXED'           // 宽度固定 375
 root.x = originX; root.y = originY             // 避开 (0,0)
 ```
+
+**写完立刻自检**（一次 use_design_script 调用结束前 return 出来）：
+
+```javascript
+return {
+  rootId: root.id,
+  selfCheck: {
+    w: root.width,                          // 期望 375
+    padding: `${root.paddingTop}/${root.paddingRight}/${root.paddingBottom}/${root.paddingLeft}`,  // 期望 "16/16/16/16"
+    itemSpacing: root.itemSpacing,          // 期望 13
+    hasFill: (root.fills && root.fills.length > 0),  // 期望 true
+  }
+}
+```
+
+如果 selfCheck 里任何一项不对，说明 set() 也没生效 —— 立刻重新单独赋值，不要继续写后面节点。
 
 ### 4.2 完整页面骨架（section_wrapper 模式 / 模式 C）
 
@@ -212,26 +250,30 @@ appendText(ROOT, '顶部介绍标题', true)
 appendText(ROOT, '顶部介绍 body 内容...', false)
 
 // ── makeSection：每个「思路 + 卡片组」用一个 section_wrapper
+// ⚠ createAutoLayout 只传 direction；itemSpacing / fills 必须 append 后单独设（§1.5）
 function makeSection({ parent, titleChars, descChars, cards }) {
   // 1. section_wrapper (VERTICAL, itemSpacing=3)：title_block ↔ cards_block 紧贴
-  const wrap = relay.createAutoLayout('VERTICAL', { itemSpacing: 3 })
+  const wrap = relay.createAutoLayout('VERTICAL')
   parent.appendChild(wrap)
   wrap.layoutSizingHorizontal = 'FILL'
+  wrap.itemSpacing = 3                             // ⚠ 一定 append 后单独设
   wrap.fills = []                                  // 透明 ⚠
 
   // 2. title_block (VERTICAL, itemSpacing=6)：H1 ↔ body 紧凑
-  const titleBlock = relay.createAutoLayout('VERTICAL', { itemSpacing: 6 })
+  const titleBlock = relay.createAutoLayout('VERTICAL')
   wrap.appendChild(titleBlock)
   titleBlock.layoutSizingHorizontal = 'FILL'
-  titleBlock.fills = []                            // 透明 ⚠
+  titleBlock.itemSpacing = 6                       // ⚠
+  titleBlock.fills = []
   appendText(titleBlock, titleChars, true)         // H1 思路 N
   appendText(titleBlock, descChars,  false)        // body 推荐理由
 
   // 3. cards_block (VERTICAL, itemSpacing=10)：多商品卡
-  const cardsBlock = relay.createAutoLayout('VERTICAL', { itemSpacing: 10 })
+  const cardsBlock = relay.createAutoLayout('VERTICAL')
   wrap.appendChild(cardsBlock)
   cardsBlock.layoutSizingHorizontal = 'FILL'
-  cardsBlock.fills = []                            // 透明 ⚠
+  cardsBlock.itemSpacing = 10                      // ⚠
+  cardsBlock.fills = []
   for (const cardData of cards) {
     const card = makeCard(cardData)                // 调 §4.3 商品横卡 makeCard
     cardsBlock.appendChild(card)
@@ -348,6 +390,8 @@ parent.appendChild(cartIcon)
 - [ ] `itemSpacing`：13（Relay 默认 10，会让间距全塌）
 - [ ] `fills`：WHITE（默认透明，对话稿应有白底）
 - [ ] `width`：375（顶层 resize 设固定宽）
+- [ ] **createAutoLayout 只传 `direction`，所有属性 `appendChild` 后单独赋值或用 `.set({...})`**（§1.5 —— 这是 v2 整稿塌掉的真凶）
+- [ ] **写完 root 立刻 `return` self-check 校验**：padding/itemSpacing/fills 是否真的生效（§4.1 模板）。不对就停下重设，不要继续写卡
 
 **页面骨架（模式 C 必读）**
 - [ ] 顶部介绍 H1+body **直接挂 root**（不要包 wrapper）—— 间距用 root.itemSpacing=13
