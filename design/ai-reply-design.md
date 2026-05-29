@@ -252,8 +252,9 @@ split_button:
 
   buy_btn:
     layout: HORIZONTAL  hug_width  fixed_height: 20
-    padding: [6, 8]  bg: price  radius: { tr: 6, br: 6 }
-    clipsContent: true
+    padding: [4, 8]  bg: price  radius: { tr: 6, br: 6 }    # ⚠ 上下 4（不是 6）：4+lh12+4=20 正好居中
+    counterAxisAlignItems: CENTER  primaryAxisAlignItems: CENTER
+    # 不要设 clipsContent=true，让文字自然居中；旧版 6+12+6=24 + clip 会让中文 baseline 偏下
     text: { chars: "购买", font: buy_btn }
 
   layout: HORIZONTAL  hug  itemSpacing: 0  counterAxisAlignItems: CENTER

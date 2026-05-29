@@ -320,7 +320,7 @@ cardWrap        HORIZONTAL | F5F6FA | r12 | p8 | gap:12
                 ├── addBtn   FRAME | 24×20 FIXED | white | r-tl:6 r-bl:6
                 │   └── iconCircle  FRAME | 24×24 | transparent | r:24 | absolute x:0 y:-2
                 │       └── cartIcon  SVG 14.4×14.4 | absolute x:4.8 y:4.8
-                └── buyBtn   FRAME | HUG×20 FIXED | px:8 py:6 | #FF0F23 | r-tr:6 r-br:6 | clip
+                └── buyBtn   FRAME | HUG×20 FIXED | px:8 py:4 | #FF0F23 | r-tr:6 r-br:6 | counter:CENTER primary:CENTER
                     └── buyText   "购买" 12px Medium white | lineHeight:12
 ```
 
@@ -411,7 +411,7 @@ parent.appendChild(cartIcon)
 - [ ] **`priceNumWrap.itemSpacing = 0`（append 后单独设）**：¥ 与数字紧贴无间隙，否则会露出红色背景缝隙
 - [ ] **`splitBtn.itemSpacing = 0`（append 后单独设）**：addBtn + buyBtn 紧贴
 - [ ] `addBtn` 内 `iconCircle`：transparent、`absolute x:0 y:-2`、SVG 14.4×14.4 @ (4.8, 4.8)
-- [ ] `buyBtn`：`clipsContent=true`、高度固定 20、padding 6/8
+- [ ] `buyBtn`：高度固定 20、**padding 上下 4 / 左右 8**（不是 6/8）、`counterAxisAlignItems='CENTER'`、不要设 clipsContent —— 4+lh12+4=20 让"购买"自然居中
 - [ ] 收藏 wrapper：`absolute top:4 left:4`、`padding:3`、`backdrop_blur:4`
 
 **文本内容（chars）写法**
