@@ -8,6 +8,8 @@ last_updated: "2026-05-28"
 
 # Relay 写入手册
 
+> ⚠ **本手册已降级（v4）**：新工作流下 **LLM 不再手写节点骨架**，布局全部走确定性渲染器 [render/render-scheme.js](../render/render-scheme.js)。本文档里的骨架代码 / API 顺序 / 坑 checklist **已固化进渲染器**，此处仅作**渲染器内部实现参考 / 调试兜底**，不再是每次生成的必读。新流程入口见 [content-schema.md](./content-schema.md) 与 [CLAUDE.md](../CLAUDE.md)。
+
 > 配合 [ai-reply-design.md](./ai-reply-design.md) 使用：**规范** 在那边查（颜色 / 字号 / 间距 / 字段 spec），**实现细节** 在这里查（节点骨架 / API 顺序 / 坑 checklist）。
 
 ---

@@ -1,0 +1,21 @@
+{
+  "title": "挑选电脑显示屏",
+  "blocks": [
+    { "type": "header" },
+    { "type": "body", "text": "挑显示器先想清楚日常用途，是办公码字为主，还是打游戏、剪片子。下面按两个常见方向给你推荐，可对照预算和桌面尺寸选。" },
+
+    { "type": "h1", "text": "思路一 · 办公学习选高分高色准", "more": true },
+    { "type": "body", "text": "长时间办公阅读，优先看分辨率、色准和护眼，2K 起步、IPS 面板更舒服，接口齐全方便扩展。" },
+    { "type": "card", "name1": "戴尔 U2723QE 27英寸 4K专业显示器", "name2": "IPS Black · USB-C 90W反向充电", "price": "4599", "sold": "已售1万+", "ziying": true, "promo": "满4000减200", "services": ["7天价保", "闪电退款"] },
+    { "type": "card", "name1": "明基 PD2705U 27英寸 4K设计显示器", "name2": "广色域 · 出厂校色 · 双向Type-C", "price": "3899", "sold": "已售5千+", "ziying": true, "promo": "满3000减150", "services": ["7天价保"] },
+    { "type": "card", "name1": "LG 27UP850N 27英寸 4K办公显示器", "name2": "IPS · USB-C 96W · HDR400", "price": "2999", "sold": "已售8千+", "ziying": true, "services": ["7天价保", "闪电退款"] },
+
+    { "type": "h1", "text": "思路二 · 游戏娱乐选高刷高响应", "more": true },
+    { "type": "body", "text": "玩 3A 或 FPS 优先看刷新率和响应时间，2K+165Hz 是当前甜点档，曲面带鱼屏沉浸感更强。" },
+    { "type": "card", "name1": "三星 奥德赛 G7 27英寸 2K曲面电竞屏", "name2": "240Hz · 1ms · 1000R曲率", "price": "3299", "sold": "已售2万+", "ziying": true, "promo": "满3000减200", "services": ["7天价保", "闪电退款"] },
+    { "type": "card", "name1": "华硕 TUF VG27AQ 27英寸 2K电竞显示器", "name2": "IPS · 170Hz · G-SYNC兼容", "price": "1999", "sold": "已售3万+", "ziying": true, "promo": "满1500减100", "services": ["闪电退款"] },
+    { "type": "card", "name1": "AOC 卢瓦尔 Q27G3Z 27英寸 2K高刷屏", "name2": "Fast IPS · 180Hz · 1ms", "price": "1599", "sold": "已售1万+", "ziying": true, "services": ["7天价保"] },
+
+    { "type": "all_products" }
+  ]
+}

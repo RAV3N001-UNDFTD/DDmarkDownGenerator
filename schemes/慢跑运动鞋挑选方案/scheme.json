@@ -1,0 +1,24 @@
+{
+  "title": "挑选慢跑运动鞋",
+  "blocks": [
+    { "type": "header" },
+    { "type": "body", "text": "日常慢跑鞋可以按跑量、脚感和训练目标来挑。先选适合自己的类型，再结合尺码与落地稳定感试穿。" },
+
+    { "type": "h1", "text": "思路一 · 入门慢跑选舒适缓震型", "more": true },
+    { "type": "body", "text": "适合每周轻松跑 2-3 次的人群。优先关注柔和脚感和日常耐穿，作为第一双跑鞋更容易适应。" },
+    { "type": "card", "name1": "亚瑟士 GEL-CONTEND 9 缓震慢跑鞋", "name2": "舒适缓震 · 日常训练入门款", "price": "359", "sold": "已售2万+", "ziying": true, "promo": "满300减30", "services": ["7天价保"] },
+    { "type": "card", "name1": "耐克 REVOLUTION 7 男子公路跑步鞋", "name2": "轻便透气 · 通勤慢跑两用", "price": "399", "sold": "已售1万+", "ziying": true, "services": ["闪电退款"] },
+
+    { "type": "h1", "text": "思路二 · 落地不稳选支撑稳定型", "more": true },
+    { "type": "body", "text": "如果体重偏大、跑久后脚踝容易晃，或更看重保护感，可以选鞋底更稳、后跟包裹更扎实的款式。" },
+    { "type": "card", "name1": "亚瑟士 GT-2000 13 稳定支撑跑鞋", "name2": "稳定支撑 · 适合日常慢跑", "price": "739", "sold": "已售5千+", "ziying": true, "promo": "满600减60", "services": ["7天价保", "闪电退款"] },
+    { "type": "card", "name1": "New Balance Fresh Foam X 860 v14 跑鞋", "name2": "支撑缓震 · 后跟包裹稳固", "price": "899", "sold": "已售2千+", "ziying": true, "services": ["7天价保"] },
+
+    { "type": "h1", "text": "思路三 · 想提速选轻量回弹型", "more": true },
+    { "type": "body", "text": "已经养成跑步习惯，偶尔想加一点配速训练，可以选择重量更轻、回弹更干脆的鞋款。" },
+    { "type": "card", "name1": "耐克 PEGASUS 41 男子公路跑步鞋", "name2": "轻量回弹 · 日常训练进阶款", "price": "899", "sold": "已售8千+", "ziying": true, "promo": "满800减80", "services": ["7天价保"] },
+    { "type": "card", "name1": "阿迪达斯 ADIZERO SL2 轻量跑步鞋", "name2": "灵活回弹 · 适合节奏跑训练", "price": "799", "sold": "已售3千+", "ziying": true, "services": ["闪电退款"] },
+
+    { "type": "all_products" }
+  ]
+}
