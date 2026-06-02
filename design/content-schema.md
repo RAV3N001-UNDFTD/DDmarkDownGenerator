@@ -2,7 +2,7 @@
 version: "1.0"
 scope: "对话流方案内容 Schema —— LLM 与确定性渲染器之间的契约"
 related:
-  registry: "design/component-registry.md"
+  assembly: "design/assembly-spec.md"
   renderer: "render/render-scheme.js"
 source_board: "relay node 17:1747"
 last_updated: "2026-06-01"
@@ -11,10 +11,10 @@ last_updated: "2026-06-01"
 # 内容 Schema（scheme.json）
 
 > **这是 LLM 与渲染器之间的唯一契约。** LLM 只产出符合本 schema 的 `scheme.json`；
-> 之后由 [render/render-scheme.js](../render/render-scheme.js) 用设计师维护的组件库（见 [component-registry.md](./component-registry.md)）确定性装配。
+> 之后由 [render/render-scheme.js](../render/render-scheme.js) 用设计师维护的组件库确定性装配。
 > **LLM 不写任何 Relay 布局 API、不写间距/坐标/颜色。**
 
-装配方式（区块如何堆叠、间距如何来）由渲染器按 [component-registry.md §3 拼接模型](./component-registry.md) 处理，schema 不涉及。
+装配方式（区块如何堆叠、间距如何来）由渲染器按 [assembly-spec.md](./assembly-spec.md) 处理，schema 不涉及。
 
 ---
 
@@ -85,13 +85,13 @@ last_updated: "2026-06-01"
 
 ```json
 {
-  "type": "row_v2",
+  "type": "row_v",
   "cards": [
-    { "name": "飞鹤迹萃3段 12-36", "price": "¥215.02",
+    { "name": "飞鹤迹萃3段 12-36", "price": "215",
       "sold": "销量500+", "ziying": true,
       "promo": "满200减20", "services": ["7天价保"],
       "shop": "飞鹤京东自营旗舰店" },
-    { "name": "某品牌 有机配方奶 400g", "price": "¥189.00",
+    { "name": "某品牌 有机配方奶 400g", "price": "189",
       "sold": "销量3千+", "ziying": false,
       "services": ["闪电退款"] }
   ]
@@ -101,7 +101,7 @@ last_updated: "2026-06-01"
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `name` | string | 商品标题（单行截断） |
-| `price` | string | **含 ¥ 符号**（如"¥215.02"，与 card_h 不同） |
+| `price` | string | **纯数字不带 ¥**（¥ 由组件自带，渲染器 stripYen 兜底） |
 | `sold` | string | 销量文案；空则隐藏 |
 | `ziying` | bool | 自营标 |
 | `promo` | string | 促销标签；空则隐藏 |

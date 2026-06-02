@@ -4,21 +4,21 @@
 
 本项目用于快速生成 JD AI 购物助手的回复设计方案。设计师描述场景，agent 把场景翻译成**内容 schema**，再由**确定性渲染器**渲染成 Relay 组件实例。
 
-> **架构原则（v4，详见 [迭代计划](../../.claude/plans/abstract-mixing-stonebraker.md)）**：
-> **布局不由 LLM 手写。** LLM 只产出内容 schema；布局由冻结的渲染器 + 设计师手建的 master 组件确定性还原。
-> 这样换来：还原度确定、agent 输出稳定、组件调试成本一次性。
+> **架构原则（v4）**：
+> 1. **布局不由 LLM 手写**。LLM 只产出内容 schema；布局由冻结的渲染器 + 设计师维护的组件库确定性还原。
+> 2. **权威源分层防漂移**：组件（清单/ID/属性）的权威源在 **Relay**，实时读取，**不抄进 MD**；「怎么拼」的知识沉淀在本地 MD + 渲染器；维护成本只跟「新拼装范式」走，不跟组件数量走。
 
 ---
 
 ## 设计规范
 
 - 📋 **内容 Schema（LLM 产出契约，必读）** → [design/content-schema.md](design/content-schema.md)
-- 🗂 **组件注册表（逻辑名 → Relay 组件 ID + 属性映射）** → [design/component-registry.md](design/component-registry.md)
-- ⚙️ **确定性渲染器（冻结代码，封装所有布局坑）** → [render/render-scheme.js](render/render-scheme.js)
-- 📐 **视觉规范 / token / 字段 spec（建组件 + 写 schema 共同权威源）** → [design/ai-reply-design.md](design/ai-reply-design.md)
+- 🧩 **拼装规范（区块词表 / 间距模型 / 范式参考板 / 约定）** → [design/assembly-spec.md](design/assembly-spec.md)
+- ⚙️ **确定性渲染器（冻结代码，token 实时解析组件）** → [render/render-scheme.js](render/render-scheme.js)
+- 📐 **视觉规范 / token / 字段 spec** → [design/ai-reply-design.md](design/ai-reply-design.md)
 - 🛠 **Relay 手写实现手册（已降级为渲染器内部参考 / 兜底）** → [design/relay-api.md](design/relay-api.md)
 
-> 本文件**不再维护规范副本**。颜色 / 字号 / 间距 / 组件结构请到上述查询，避免漂移。
+> 本文件**不再维护规范副本**，组件清单也**不落 MD**（权威源在 Relay）。
 
 ---
 
@@ -29,11 +29,12 @@
 1. 确认目标 Relay 节点链接（用户提供，或沿用上次链接）
 2. 翻 [content-schema.md](design/content-schema.md) 把场景写成一份 `scheme.json`（**LLM 只做这一步的内容产出**）
 3. （可选）把 schema 给设计师过目/微调
-4. 读 [render/render-scheme.js](render/render-scheme.js) 全文，拼到 `use_design_script` 脚本头部，末尾 `return await renderScheme(<本次schema>)`
+4. **读 [render/render-scheme.js](render/render-scheme.js) 全文**，原样拼到 `use_design_script` 脚本头部，末尾 `return await renderScheme(<本次schema>)`
 5. 检查 return 的 `selfCheck` 全绿、`warnings` 为空，再调 `get_screenshot` 截图确认
 
-> ⚠ **不要再手写 `createAutoLayout`/节点骨架**——布局全部走渲染器。手写骨架仅在调试渲染器本身时参考 [relay-api.md](design/relay-api.md)。
-> 前置依赖：schema 里用到的组件必须已在 [component-registry.md](design/component-registry.md) 注册（设计师建好 master 组件 + 填入 node ID）。
+> ⚠ **硬规则 1**：生成方案**必须先读 render-scheme.js 全文再用**，**禁止凭记忆手写/重建渲染逻辑**（会与文件漂移、丢掉已修的 bug）。
+> ⚠ **硬规则 2**：不要手写 `createAutoLayout`/节点骨架——布局全部走渲染器。
+> 渲染器按组件名 token 实时解析组件，无需预先注册 node ID；若组件改了名导致 token 失配，会在 `warnings` 里报出来。新组件 / 新范式的接入约定见 [assembly-spec.md §4](design/assembly-spec.md)。
 
 ---
 
@@ -55,7 +56,7 @@
 ├── CLAUDE.md                    ← 本文件（入口 + 项目约束）
 ├── design/
 │   ├── content-schema.md        ← 内容 Schema（LLM 产出契约）★ 核心
-│   ├── component-registry.md    ← 组件注册表（逻辑名 → Relay 组件 ID + 属性映射）
+│   ├── assembly-spec.md         ← 拼装规范（区块词表/间距模型/范式参考板）★ 核心
 │   ├── ai-reply-design.md       ← 视觉规范权威源（token / 字段 spec）
 │   └── relay-api.md             ← Relay 手写手册（已降级为渲染器内部参考）
 ├── render/

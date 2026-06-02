@@ -172,7 +172,7 @@ shop_name:     { size: 12, weight: 400, lineHeight: 16, color: sold_gray }
 
 ## §3 商品卡
 
-> **§3 字段 spec 是「建 master 组件」与「写 schema」的共同权威源。** 字段命名需与 [component-registry.md](./component-registry.md) 的组件属性、[content-schema.md](./content-schema.md) 的 card 字段保持一致，避免三处漂移。
+> **§3 字段 spec 是「建 master 组件」与「写 schema」的共同权威源。** 字段命名需与组件属性、[content-schema.md](./content-schema.md) 的 card 字段、[assembly-spec.md](./assembly-spec.md) 的区块词表保持一致，避免漂移。
 
 ### 3.1 商品横卡（horizontal card）
 

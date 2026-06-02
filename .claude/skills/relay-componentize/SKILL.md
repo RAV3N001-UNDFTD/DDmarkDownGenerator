@@ -5,7 +5,7 @@ description: >
   节点链接（relay.jd.com/file/design?...node_id=...）并希望「封装组件 / 做成组件 /
   组件化 / componentize / 帮我把这个建成组件」时使用。按本项目现有组件库（P_card_h、
   文本/正文、标签/促销标签 等）的命名与属性约定，在 Relay 里建好组件、关联 component
-  properties、并注册进 content-schema / component-registry / render-scheme，供用户检查微调。
+  properties。需要时把新区块接入 content-schema / assembly-spec / render-scheme，供用户检查微调。
 ---
 
 # Relay 组件封装 skill
@@ -19,7 +19,7 @@ description: >
 ## 0. 前置（每次必做）
 
 1. 从链接解析 `fileKey` / `nodeId`（`node_id=17:1747`；若是 `17-1747` 形式把 `-` 换 `:`）。
-2. 读 **[design/component-registry.md](../../../design/component-registry.md)** 了解现有组件的命名/属性约定（要对齐，别另造一套）。
+2. 读 **[design/assembly-spec.md](../../../design/assembly-spec.md)** 了解现有命名 token / 属性 / 拼装约定（要对齐，别另造一套）；组件清单实时扫 Relay。
 3. 加载 zero-design 的 use_design_script 资源：`use-design-script/SKILL.md`、`references/relay-plugin-api-index.md`、`references/component-patterns.md`（API 范式）。**写组件 API 前先核对，别凭记忆臆测。**
 
 ---
@@ -82,12 +82,18 @@ node.componentPropertyReferences = { characters: k }
 
 ---
 
-## 5. 注册（三处，让组件可被流水线使用）
+## 5. 接入流水线（按需，组件清单不落 MD）
 
-1. **[design/component-registry.md](../../../design/component-registry.md)**：§1 清单加一行（逻辑名 + node ID + 可设属性基础名）。
-2. **[render/render-scheme.js](../../../render/render-scheme.js)** 的 `REGISTRY`：加 `逻辑名: 'node:id'`。
-3. **[design/content-schema.md](../../../design/content-schema.md)**：若是新区块/新卡类型，加字段说明 + 示例。
-4. 渲染器 `applyXXX` 逻辑：纯文本/标签类多数**无需改**（靠基础名自省驱动）；结构特殊的才扩展一个 `apply` 分支。
+组件清单/ID/属性**不写进任何 MD**（权威源在 Relay，渲染器按 token 实时解析）。接入只在「新增了一个区块类型/拼装范式」时才需要：
+
+1. **[render/render-scheme.js](../../../render/render-scheme.js)** 的 `TOKENS`：加 `逻辑名: '组件名token'`（取组件名里稳定的部分）。
+2. 同文件加一个 block handler（多数组件可复用 `setProps` 通用填充；结构特殊的才单独写）。
+3. **[design/content-schema.md](../../../design/content-schema.md)**：加该 block 的字段说明 + 示例。
+4. **[design/assembly-spec.md](../../../design/assembly-spec.md)**：§1 区块词表加一行，§3 范式参考板登记（指针 + 一句意图）。
+
+> 若新组件只是已有区块类型的同类变体（如又一种卡），且命名/属性遵循约定，则**通常零改动**——token 解析 + 通用填充自动适配。
+
+> ⚠ 命名约定：组件名保留**稳定 token**；内容尽量暴露成**组件属性**（让通用 setProps 直接吃）；可变数量子元素用**嵌套实例**并统一命名（标签 = `促销标`/`服务标`）。
 
 ---
 
@@ -116,6 +122,6 @@ node.componentPropertyReferences = { characters: k }
 
 ## 参考
 
-- 现有组件约定 / 拼接模型 → [design/component-registry.md](../../../design/component-registry.md)
+- 现有命名 token / 拼装模型 / 范式参考板 → [design/assembly-spec.md](../../../design/assembly-spec.md)
 - API 范式（创建/属性/实例/自省 helper）→ zero-design 资源 `references/component-patterns.md`
 - 注册落点 → [render/render-scheme.js](../../../render/render-scheme.js)
