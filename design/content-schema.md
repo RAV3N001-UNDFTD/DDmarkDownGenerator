@@ -38,6 +38,7 @@ last_updated: "2026-06-01"
 | `h2` | 文本/二级标题 | `text` | 次级标题 |
 | `card` | 商品卡/P_card_h | 见 §3 | 商品横卡 |
 | `all_products` | 按钮/全部商品按钮 | 无 | 底部「全部商品 >」入口。通常放最后，可省略 |
+| `row_v2` | 商品卡 / P_card_v2 ×1-2 | `cards` | 竖卡 2 列，1-2 张横排；见 §4 |
 
 ```json
 { "type": "header" }
@@ -78,7 +79,38 @@ last_updated: "2026-06-01"
 
 ---
 
-## §4 完整示例（端到端验证用）
+## §4 row_v2 块（product_card_v2 竖卡 2 列）
+
+1-2 张竖卡横排（卡宽 168px，2 张刚好填满 343 内容区，间距由渲染器烘焙）。
+
+```json
+{
+  "type": "row_v2",
+  "cards": [
+    { "name": "飞鹤迹萃3段 12-36", "price": "¥215.02",
+      "sold": "销量500+", "ziying": true,
+      "promo": "满200减20", "services": ["7天价保"],
+      "shop": "飞鹤京东自营旗舰店" },
+    { "name": "某品牌 有机配方奶 400g", "price": "¥189.00",
+      "sold": "销量3千+", "ziying": false,
+      "services": ["闪电退款"] }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `name` | string | 商品标题（单行截断） |
+| `price` | string | **含 ¥ 符号**（如"¥215.02"，与 card_h 不同） |
+| `sold` | string | 销量文案；空则隐藏 |
+| `ziying` | bool | 自营标 |
+| `promo` | string | 促销标签；空则隐藏 |
+| `services` | string[] | 服务标签，**最多 2 个** |
+| `shop` | string | 店铺名；空则隐藏 |
+
+---
+
+## §5 完整示例（端到端验证用）
 
 ```json
 {

@@ -21,7 +21,8 @@ const REGISTRY = {
   h2: '17:1733', // 文本/二级标题    prop: 内容
   more_btn: '17:2100', // 按钮/更多按钮
   all_products: '17:1745', // 按钮/全部商品按钮
-  product_card_h: '17:1693', // 商品卡/P_card_h
+  product_card_h: '17:1693',  // 商品卡/P_card_h（横卡）
+  product_card_v2: '18:79',   // 商品卡/P_card_v2（竖卡 2 列，168×274）
 }
 
 const COLOR = { WHITE: { r: 1, g: 1, b: 1 } }
@@ -43,6 +44,7 @@ async function renderScheme(scheme) {
       case 'h2': await appendTextBlock(root, 'h2', block.text, warnings); break
       case 'card': await appendCard(root, block, warnings); break
       case 'all_products': await appendFixed(root, 'all_products', warnings); break
+      case 'row_v2': await appendRowV2(root, block, warnings); break
       default: warnings.push(`未知 block.type: ${block.type}`)
     }
   }
@@ -199,6 +201,51 @@ function setTextProp(inst, baseName, value, warnings) {
 function hideByName(inst, name) {
   const n = inst.findOne((x) => x.name === name)
   if (n) n.visible = false
+}
+
+/* ───────────── row_v2：竖卡 2 列，HORIZONTAL 横排，间距 7 ───────────── */
+async function appendRowV2(root, block, warnings) {
+  const wrap = makeWrapper(root, 'HORIZONTAL')
+  wrap.itemSpacing = 7
+  for (const card of (block.cards || []).slice(0, 2)) {
+    const inst = await instOf('product_card_v2', warnings)
+    if (!inst) continue
+    wrap.appendChild(inst)
+    inst.layoutSizingHorizontal = 'FILL'
+    applyProductCardV2(inst, card, warnings)
+  }
+}
+
+/* P_card_v2：组件级属性（7 个）+ 嵌套实例标签（与 P_card_h 同模式）
+ * 标签行内是 促销标签×1 + 服务标签×2 的嵌套实例，直接复用 setTagInstance */
+function applyProductCardV2(inst, card, warnings) {
+  const keyOf = baseMap(inst.mainComponent)
+  const props = {}
+  const put = (base, val) => { const k = keyOf[base]; if (k) props[k] = val; else warnings.push(`P_card_v2 缺属性「${base}」`) }
+
+  put('自营标显示', !!card.ziying)
+  if (card.name  != null) put('商品标题', String(card.name))
+  if (card.price != null) put('价格',     String(card.price))
+
+  const hasSold = card.sold != null && card.sold !== ''
+  if (hasSold) put('销量文案', String(card.sold))
+
+  const hasShop = card.shop != null && card.shop !== ''
+  if (hasShop) put('店铺名', String(card.shop))
+
+  if (Object.keys(props).length) inst.setProperties(props)
+
+  // 无值时直接找节点 visible=false（不依赖 BOOLEAN 属性，更稳）
+  if (!hasSold) hideByName(inst, '销量500+')
+  if (!hasShop) hideByName(inst, 'Frame 2085663872')
+
+  // 嵌套标签（促销×1 + 服务×2）—— 与 P_card_h 完全相同的 setTagInstance 模式
+  const promos   = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '促销标签')
+  const services = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '服务标签')
+  setTagInstance(promos[0], card.promo, warnings)
+  const svc = Array.isArray(card.services) ? card.services : []
+  if (svc.length > 2) warnings.push(`P_card_v2 services ${svc.length} > 2，已截断`)
+  services.forEach((node, i) => setTagInstance(node, svc[i], warnings))
 }
 
 /* 基础名 → 真实 key。⚠ 读 mainComponent 的 componentPropertyDefinitions

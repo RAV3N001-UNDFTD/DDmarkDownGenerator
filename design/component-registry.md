@@ -41,6 +41,7 @@ last_updated: "2026-06-01"
 | — | 标签/服务标签 | `17:1713` | COMPONENT | `文本` TEXT（卡内嵌套实例） |
 | — | 按钮/购买按钮 | `17:1695` | COMPONENT | 无（卡内嵌套） |
 | — | 按钮/收藏按钮 | `17:1702` | COMPONENT | 无（卡内嵌套） |
+| `product_card_v2` | 商品卡 / P_card_v2 | `18:79` | COMPONENT | 见 §2（13 个属性，单次 setProperties 搞定） |
 
 > 后 5 个是 `product_card_h` 内部使用的子组件，不单独出现在装配层。
 
@@ -120,10 +121,44 @@ header → body → [h1+更多] → body → card → card → [h1+更多] → b
 
 ---
 
-## §4 待补组件（Phase 3）
+---
 
-> 竖卡等后续组件由设计师建好后，在 §1 追加一行（逻辑名 + node ID + 属性），在 [content-schema.md](./content-schema.md) 增加对应 card 类型，渲染器靠注册表 + 属性自省驱动，多数情况无需改渲染器。
+## §2 product_card_v2（商品竖卡 2 列）
+
+| 项 | 值 |
+|---|---|
+| **逻辑名** | `product_card_v2` |
+| **node ID** | `18:79`（page `0:2`） |
+| **整体** | 168×274，商卡主图 168×168 + 信息区（标题行 + 标签行 + 价格行 + 店铺名行） |
+| **状态** | ✅ 已封装（封装自设计师 18:1，script 原地 createComponentFromNode，像素保真） |
+
+### 属性映射（schema 字段 → 组件属性基础名，13 个）
+
+| schema 字段 | 组件属性基础名 | 类型 | 说明 |
+|---|---|---|---|
+| `ziying` | 自营标显示 | BOOLEAN | 左上角自营标 |
+| `name` | 商品标题 | TEXT | 单行截断 |
+| `promo` | 促销文案 | TEXT | 红色促销标签文字；配套 显示促销标 BOOLEAN |
+| — | 显示促销标 | BOOLEAN | promo 空时渲染器设 false |
+| `services[0]` | 服务1文案 | TEXT | 服务标签1；配套 显示服务1 BOOLEAN |
+| — | 显示服务1 | BOOLEAN | |
+| `services[1]` | 服务2文案 | TEXT | 服务标签2（默认隐藏）；配套 显示服务2 BOOLEAN |
+| — | 显示服务2 | BOOLEAN | |
+| `price` | 价格 | TEXT | 含 ¥ 符号（如 "¥215.02"） |
+| `sold` | 销量文案 | TEXT | 如"销量500+"；配套 显示销量 BOOLEAN |
+| — | 显示销量 | BOOLEAN | |
+| `shop` | 店铺名 | TEXT | 配套 显示店铺名 BOOLEAN |
+| — | 显示店铺名 | BOOLEAN | |
+
+> **与 P_card_h 的差异**：
+> - 标签通过组件属性（TEXT+BOOLEAN）直接控制，无嵌套实例，渲染器用单次 `setProperties` 搞定，不需要 `findAll` 找嵌套组件
+> - `price` 包含 ¥ 符号（P_card_h 是纯数字，¥ 固定在组件内）
+> - 竖卡宽 168px，一行并排 2 张（`row_v2` 块）
+
+---
+
+## §3 待补组件（Phase 3）
 
 | 逻辑名 | 对应 | 状态 |
 |---|---|---|
-| `product_card_v2` / `v3` | 商品竖卡 2/3 列 | ⬜ 未开始 |
+| `product_card_v3` | 商品竖卡 3 列 | ⬜ 未开始 |
