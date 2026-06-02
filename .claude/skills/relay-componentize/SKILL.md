@@ -91,12 +91,14 @@ node.componentPropertyReferences = { characters: k }
 
 ---
 
-## 6. 验证 → 交用户
+## 6. 汇报
 
-- 实例化自测：`createInstance()` → `setProperties(...)` 改几个字段 → 确认生效。
-- `get_screenshot` 截图比对原设计稿。
-- 用 §4 示例 schema 走一遍渲染器（端到端），确认 `warnings` 为空。
-- 汇报：新组件 node ID、属性清单、截图，**请用户检查微调**（像素细节、属性命名、默认值由设计师定夺）。
+封装完直接告知用户：
+- 新组件 node ID
+- 属性清单（基础名 + 类型）
+- `get_screenshot` 截图
+
+用户会自行在 Relay 里检查微调，无需 agent 做端到端验证。
 
 ---
 
