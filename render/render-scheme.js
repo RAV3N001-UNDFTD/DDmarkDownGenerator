@@ -21,8 +21,8 @@ const REGISTRY = {
   h2: '17:1733', // 文本/二级标题    prop: 内容
   more_btn: '17:2100', // 按钮/更多按钮
   all_products: '17:1745', // 按钮/全部商品按钮
-  product_card_h: '17:1693',  // 商品卡/P_card_h（横卡）
-  product_card_v2: '18:79',   // 商品卡/P_card_v2（竖卡 2 列，168×274）
+  product_card_h: '17:1693',  // 商品卡/P_card_h（横卡，343×102）
+  product_card_v: '18:79',    // 商品卡/P_card_v（竖卡 2 列，168×274）
 }
 
 const COLOR = { WHITE: { r: 1, g: 1, b: 1 } }
@@ -44,7 +44,7 @@ async function renderScheme(scheme) {
       case 'h2': await appendTextBlock(root, 'h2', block.text, warnings); break
       case 'card': await appendCard(root, block, warnings); break
       case 'all_products': await appendFixed(root, 'all_products', warnings); break
-      case 'row_v2': await appendRowV2(root, block, warnings); break
+      case 'row_v': await appendRowV2(root, block, warnings); break
       default: warnings.push(`未知 block.type: ${block.type}`)
     }
   }
@@ -208,7 +208,7 @@ async function appendRowV2(root, block, warnings) {
   const wrap = makeWrapper(root, 'HORIZONTAL')
   wrap.itemSpacing = 7
   for (const card of (block.cards || []).slice(0, 2)) {
-    const inst = await instOf('product_card_v2', warnings)
+    const inst = await instOf('product_card_v', warnings)
     if (!inst) continue
     wrap.appendChild(inst)
     inst.layoutSizingHorizontal = 'FILL'
@@ -240,8 +240,8 @@ function applyProductCardV2(inst, card, warnings) {
   if (!hasShop) hideByName(inst, 'Frame 2085663872')
 
   // 嵌套标签（促销×1 + 服务×2）—— 与 P_card_h 完全相同的 setTagInstance 模式
-  const promos   = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '促销标签')
-  const services = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '服务标签')
+  const promos   = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '促销标')
+  const services = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '服务标')
   setTagInstance(promos[0], card.promo, warnings)
   const svc = Array.isArray(card.services) ? card.services : []
   if (svc.length > 2) warnings.push(`P_card_v2 services ${svc.length} > 2，已截断`)
