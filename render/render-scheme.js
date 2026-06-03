@@ -1,73 +1,217 @@
 /**
- * render-scheme.js —— 对话流方案「确定性渲染器」（v3 · token 实时解析）
+ * render-scheme.js —— 对话流方案「确定性渲染器」（v4 · 框架驱动 + token 实时解析）
  * =================================================================
- * 冻结代码：用设计师维护的本地组件库确定性装配。LLM 只产出 content schema，
- * 不写任何 Relay 布局 API。
+ * 冻结代码。LLM 只产出 content schema，不写任何 Relay 布局 API。
  *
  * 用法（在 use_design_script 里）：
  *   1) 读本文件全文（禁止凭记忆重建）→ 粘到脚本头部
  *   2) 末尾写：  return await renderScheme(SCHEME)
  *
- * 防漂移设计：
- *   - 组件按【名字 token】实时解析（TOKENS），不硬编码 node ID
- *     → 设计师改 ID / 加前缀 / 扩库，渲染器自动适配
- *   - 组件清单 / 属性 不在本文件维护，权威源在 Relay；本文件只编码「怎么拼」
- *   - 对不上的组件 / 属性 → 收集进 warnings，生成时即暴露漂移
+ * SCHEME.framework 选择框架（见 assembly-spec.md §3 范式参考板）：
+ *   - "sections_h"     横卡分组推荐（框架2 / 板 18:875）
+ *   - "grid_v"         竖卡 2 列网格（框架1 / 板 18:860）
+ *   - "r_grid"         R 网格配思路文案（框架3 / 板 18:936）
+ *   - "intent_collect" 意图收集问卷（板 18:908，末张筛选卡才显示按钮）
+ *   - 省略 framework → 走 blocks 扁平兜底（灵活拼）
  *
- * 拼装模型见 design/assembly-spec.md（间距、wrapper、范式参考板索引）。
+ * 防漂移：组件按【名字 token】实时解析（TOKENS），不硬编码 node ID。
+ * 各框架间距按各自参考板测量（见每个 render* 顶部）。
  * =================================================================
  */
 
-/* ── 逻辑名 → 组件名 token（唯一的稳定契约；与 assembly-spec.md 同步） ──
- * 匹配规则：组件名 includes(token)。token 取设计师命名里稳定的部分。 */
 const TOKENS = {
-  header: '加载完成',
-  body: '正文',
-  h1: '一级标题',
-  h2: '二级标题',
-  more_btn: '更多按钮',
-  all_products: '全部商品按钮',
-  product_card_h: 'P_card_h',
-  product_card_v: 'P_card_v',
-  filter_card: '筛选卡',
-  r_card_scheme: 'R_cardScheme',
+  header: '加载完成', body: '正文', h1: '一级标题', h2: '二级标题',
+  more_btn: '更多按钮', all_products: '全部商品按钮',
+  product_card_h: 'P_card_h', product_card_v: 'P_card_v',
+  filter_card: '筛选卡', r_card_scheme: 'R_cardScheme',
 }
-
 const COLOR = { WHITE: { r: 1, g: 1, b: 1 } }
 const PAGE_WIDTH = 375
-const STACK_GAP = 6 // 区块间统一间距（assembly-spec §拼装模型）
 
 /* ───────────────────────── 顶层入口 ───────────────────────── */
 async function renderScheme(scheme) {
   const warnings = []
   await setupPageAndFonts()
   buildCompCache()
-  const root = buildRoot(scheme.title || '对话流方案')
-
-  for (const block of scheme.blocks || []) {
-    switch (block.type) {
-      case 'header': appendFixed(root, 'header', warnings); break
-      case 'body': appendTextBlock(root, 'body', block.text, warnings); break
-      case 'h1': appendH1(root, block, warnings); break
-      case 'h2': appendTextBlock(root, 'h2', block.text, warnings); break
-      case 'card': appendCardH(root, block, warnings); break
-      case 'row_v': appendRowV(root, block, warnings); break
-      case 'filter_card': appendFilterCard(root, block, warnings); break
-      case 'r_card_scheme': appendRScheme(root, block, warnings); break
-      case 'all_products': appendFixed(root, 'all_products', warnings); break
-      default: warnings.push(`未知 block.type: ${block.type}`)
-    }
+  let root
+  switch (scheme.framework) {
+    case 'sections_h': root = renderSectionsH(scheme, warnings); break
+    case 'grid_v': root = renderGridV(scheme, warnings); break
+    case 'r_grid': root = renderRGrid(scheme, warnings); break
+    case 'intent_collect': root = renderIntent(scheme, warnings); break
+    default: root = renderBlocks(scheme, warnings)
   }
-
   try { relay.currentPage.selection = [root]; relay.viewport.scrollAndZoomIntoView([root]) } catch (e) {}
   return {
-    ok: true, rootId: root.id,
-    selfCheck: { w: root.width, padding: `${root.paddingTop}/${root.paddingRight}/${root.paddingBottom}/${root.paddingLeft}`, itemSpacing: root.itemSpacing, hasFill: !!(root.fills && root.fills.length > 0) },
+    ok: true, rootId: root.id, framework: scheme.framework || 'blocks',
+    selfCheck: { w: root.width, padding: `${root.paddingTop}/${root.paddingRight}/${root.paddingBottom}/${root.paddingLeft}`, gap: root.itemSpacing },
     warnings,
   }
 }
 
-/* ───────────────────────── 页面 & 字体 ───────────────────────── */
+/* ═════════════════════ 框架2：横卡分组推荐（板 18:875，pad10/gap10）═══════════════════ */
+function renderSectionsH(scheme, warnings) {
+  const root = makeRoot(scheme.title, 10, 10)
+  appendInst(root, 'header', warnings)
+  if (scheme.intro) appendText(root, 'body', scheme.intro, warnings)
+  for (const sec of scheme.sections || []) {
+    const box = mkW(root, 'VERTICAL'); box.itemSpacing = 10 // 段容器
+    h1Row(box, sec.h1, sec.more, 0, warnings)
+    if (sec.body) appendText(box, 'body', sec.body, warnings)
+    for (const c of sec.cards || []) cardH(box, c, warnings)
+  }
+  return root
+}
+
+/* ═════════════════════ 框架1：竖卡 2 列网格（板 18:860，pad10/gap10）═══════════════════ */
+function renderGridV(scheme, warnings) {
+  const root = makeRoot(scheme.title, 10, 10)
+  appendInst(root, 'header', warnings)
+  if (scheme.h1) h1Row(root, scheme.h1, scheme.more, 0, warnings)
+  if (scheme.body) appendText(root, 'body', scheme.body, warnings)
+  const cards = scheme.cards || []
+  const grid = mkW(root, 'HORIZONTAL'); grid.itemSpacing = 10 // FILL 宽 355，左对齐
+  const colL = mkW(grid, 'VERTICAL'); colL.itemSpacing = 10; colL.layoutSizingHorizontal = 'HUG'
+  const colR = mkW(grid, 'VERTICAL'); colR.itemSpacing = 10; colR.layoutSizingHorizontal = 'HUG'
+  cards.forEach((c, i) => cardV((i % 2 === 0 ? colL : colR), c, warnings, false)) // 行优先：偶左奇右；卡保持 168 原宽
+  return root
+}
+
+/* ═════════════════════ 框架3：R 网格配思路文案（板 18:936，pad16/gap6+wrapper）══════════ */
+function renderRGrid(scheme, warnings) {
+  const root = makeRoot(scheme.title, 16, 6)
+  const hw = mkW(root, 'VERTICAL'); hw.paddingBottom = 13; appendInst(hw, 'header', warnings) // header wrapper
+  if (scheme.h1) h1Row(root, scheme.h1, false, 9, warnings) // h1 wrapper 上 padding 9
+  if (scheme.body) appendText(root, 'body', scheme.body, warnings)
+  const rs = instOf('r_card_scheme', warnings)
+  if (rs) {
+    root.appendChild(rs); rs.layoutSizingHorizontal = 'FILL'
+    const fcards = rs.findAll((n) => n.type === 'INSTANCE' && /F_card_[LS]/.test(n.mainComponent?.name || ''))
+    const prices = scheme.prices || []
+    for (let i = 0; i < Math.min(fcards.length, prices.length); i++) setProps(fcards[i], { 价格: stripYen(prices[i]) }, warnings)
+  }
+  if (scheme.footer) appendText(root, 'body', scheme.footer, warnings)
+  return root
+}
+
+/* ═════════════════════ 意图收集：N 问筛选卡（板 18:908，pad10/gap10，末张才显示按钮）════════ */
+function renderIntent(scheme, warnings) {
+  const root = makeRoot(scheme.title, 10, 10)
+  appendInst(root, 'header', warnings)
+  if (scheme.intro) appendText(root, 'body', scheme.intro, warnings)
+  const qs = scheme.questions || []
+  qs.forEach((q, qi) => {
+    const card = instOf('filter_card', warnings); if (!card) return
+    root.appendChild(card); card.layoutSizingHorizontal = 'FILL'
+    const titleInst = card.findOne((n) => n.type === 'INSTANCE' && (n.mainComponent?.name || '').includes('一级标题'))
+    if (titleInst && q.title) setProps(titleInst, { 内容: q.title }, warnings)
+    const opts = card.findAll((n) => n.type === 'INSTANCE' && n.name === '筛选卡')
+    ;(q.options || []).forEach((o, i) => {
+      if (!opts[i]) return
+      setProps(opts[i], { 属性1: o.selected ? '已选中' : '未选中', ...(o.text ? { 内容: o.text } : {}), ...(o.desc ? { 描述: o.desc, 展示描述: true } : {}) }, warnings)
+    })
+    if (qi < qs.length - 1) hideStartButton(card) // 仅最后一张显示「开始推荐吧」
+  })
+  return root
+}
+
+/* ═════════════════════ 兜底：扁平 blocks（灵活拼，pad10/gap10）═══════════════════ */
+function renderBlocks(scheme, warnings) {
+  const root = makeRoot(scheme.title, 10, 10)
+  for (const b of scheme.blocks || []) {
+    switch (b.type) {
+      case 'header': appendInst(root, 'header', warnings); break
+      case 'body': appendText(root, 'body', b.text, warnings); break
+      case 'h1': h1Row(root, b.text, b.more, 0, warnings); break
+      case 'h2': appendText(root, 'h2', b.text, warnings); break
+      case 'card': cardH(root, b, warnings); break
+      case 'row_v': { const w = mkW(root, 'HORIZONTAL'); w.itemSpacing = 10; for (const c of (b.cards || []).slice(0, 2)) cardV(w, c, warnings); break }
+      case 'all_products': appendInst(root, 'all_products', warnings); break
+      default: warnings.push(`未知 block.type: ${b.type}`)
+    }
+  }
+  return root
+}
+
+/* ═════════════════════ 区块级 helper ═══════════════════ */
+// h1 行：[一级标题 + 可选 更多按钮]，SPACE_BETWEEN；padTop 给 r_grid 用
+function h1Row(parent, text, more, padTop, warnings) {
+  const wrap = mkW(parent, 'HORIZONTAL')
+  if (padTop) wrap.paddingTop = padTop
+  wrap.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  try { wrap.counterAxisAlignItems = 'BASELINE' } catch (e) { wrap.counterAxisAlignItems = 'CENTER' }
+  wrap.itemSpacing = 12
+  const t = instOf('h1', warnings)
+  if (t) { wrap.appendChild(t); t.layoutSizingHorizontal = 'HUG'; setProps(t, { 内容: text }, warnings) }
+  if (more) { const m = instOf('more_btn', warnings); if (m) { wrap.appendChild(m); m.layoutSizingHorizontal = 'HUG' } }
+}
+
+// 横卡（P_card_h）：直接入 parent
+function cardH(parent, card, warnings) {
+  const inst = instOf('product_card_h', warnings); if (!inst) return
+  parent.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
+  setProps(inst, {
+    自营标显示: !!card.ziying,
+    ...(card.name1 != null ? { 商品标题1: String(card.name1) } : {}),
+    ...(card.price != null ? { 价格数字: stripYen(card.price) } : {}),
+    ...(has(card.name2) ? { 商品标题2: String(card.name2) } : {}),
+    ...(has(card.sold) ? { 销量文案: String(card.sold) } : {}),
+  }, warnings)
+  if (!has(card.name2)) hideByName(inst, '标题行2')
+  if (!has(card.sold)) hideByName(inst, '置信字段')
+  fillTags(inst, card, warnings)
+}
+
+// 竖卡（P_card_v）：fill=true 横排均分（row_v）；fill=false 保持 168 原宽（grid_v）
+function cardV(parent, card, warnings, fill = true) {
+  const inst = instOf('product_card_v', warnings); if (!inst) return
+  parent.appendChild(inst); if (fill) inst.layoutSizingHorizontal = 'FILL'
+  setProps(inst, {
+    自营标显示: !!card.ziying,
+    ...(card.name != null ? { 商品标题: String(card.name) } : {}),
+    ...(card.price != null ? { 价格: stripYen(card.price) } : {}),
+    ...(has(card.sold) ? { 销量文案: String(card.sold) } : {}),
+    ...(has(card.shop) ? { 店铺名: String(card.shop) } : {}),
+  }, warnings)
+  if (!has(card.sold)) hideByName(inst, '销量500+')
+  if (!has(card.shop)) hideByName(inst, 'Frame 2085663872')
+  fillTags(inst, card, warnings)
+}
+
+// 嵌套标签（促销标×1 + 服务标×N），横/竖卡共用
+function fillTags(inst, card, warnings) {
+  const promos = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '促销标')
+  const services = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '服务标')
+  setTag(promos[0], card.promo, warnings)
+  const svc = Array.isArray(card.services) ? card.services : []
+  if (svc.length > services.length) warnings.push(`服务标 ${svc.length} > ${services.length} 槽位，截断`)
+  services.forEach((node, i) => setTag(node, svc[i], warnings))
+}
+function setTag(node, text, warnings) {
+  if (!node) return
+  if (!has(text)) { node.visible = false; return }
+  setProps(node, { 文本: String(text) }, warnings)
+}
+
+// 意图收集：隐藏某张筛选卡的「开始推荐吧」按钮容器（保留到最后一张才显示）
+function hideStartButton(filterInst) {
+  const t = filterInst.findOne((n) => n.type === 'TEXT' && n.characters === '开始推荐吧')
+  if (!t) return
+  let n = t
+  while (n.parent && n.parent !== filterInst) n = n.parent
+  if (n && n !== filterInst) n.visible = false
+}
+
+/* 实例化固定组件 / 文本组件 */
+function appendInst(parent, logical, warnings) {
+  const inst = instOf(logical, warnings); if (!inst) return null
+  parent.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'; return inst
+}
+function appendText(parent, logical, text, warnings) {
+  const inst = appendInst(parent, logical, warnings); if (inst) setProps(inst, { 内容: text }, warnings); return inst
+}
+
+/* ═════════════════════ 基础设施 ═══════════════════ */
 async function setupPageAndFonts() {
   const page = relay.root.children.find((p) => p.id === '0:2')
   if (page) await relay.setCurrentPageAsync(page)
@@ -76,10 +220,8 @@ async function setupPageAndFonts() {
   }
 }
 
-/* ───────────── 组件解析：按 token 实时查找（不硬编码 ID） ───────────── */
 let COMP_CACHE = null
 function buildCompCache() {
-  // 当前页所有顶层 COMPONENT / COMPONENT_SET（排除变体子组件）
   COMP_CACHE = relay.currentPage.findAll(
     (n) => (n.type === 'COMPONENT' || n.type === 'COMPONENT_SET') && !(n.parent && n.parent.type === 'COMPONENT_SET')
   )
@@ -98,17 +240,11 @@ function instOf(logical, warnings) {
   return comp.type === 'COMPONENT_SET' ? comp.defaultVariant.createInstance() : comp.createInstance()
 }
 
-/* ───────────────────────── 页面根 ───────────────────────── */
-function buildRoot(title) {
+function makeRoot(title, pad, gap) {
   const { x, y } = nextTopLevelOrigin()
   const root = relay.createAutoLayout('VERTICAL')
   relay.currentPage.appendChild(root)
-  root.set({
-    name: title,
-    paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 16,
-    itemSpacing: STACK_GAP,
-    fills: [{ type: 'SOLID', color: COLOR.WHITE }],
-  })
+  root.set({ name: title || '对话流方案', paddingLeft: pad, paddingRight: pad, paddingTop: pad, paddingBottom: pad, itemSpacing: gap, fills: [{ type: 'SOLID', color: COLOR.WHITE }] })
   root.resize(PAGE_WIDTH, root.height)
   root.primaryAxisSizingMode = 'AUTO'
   root.counterAxisSizingMode = 'FIXED'
@@ -121,122 +257,6 @@ function nextTopLevelOrigin(spacing = 80) {
   return { x: Math.max(...tops.map((n) => n.x + n.width)) + spacing, y: Math.min(...tops.map((n) => n.y)) }
 }
 
-/* ───────────────────────── 区块装配 ───────────────────────── */
-
-// 固定内容组件（header / all_products）
-function appendFixed(root, logical, warnings) {
-  const inst = instOf(logical, warnings); if (!inst) return
-  if (logical === 'header') {
-    const wrap = makeWrapper(root, 'VERTICAL'); wrap.paddingBottom = 13 // header 下留白
-    wrap.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-  } else {
-    root.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-  }
-}
-
-// 文本组件（body / h2）
-function appendTextBlock(root, logical, text, warnings) {
-  const inst = instOf(logical, warnings); if (!inst) return
-  root.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-  setProps(inst, { 内容: text }, warnings)
-}
-
-// h1 行：HORIZONTAL wrapper（上 padding 9，SPACE_BETWEEN）+ 一级标题 [+ 更多按钮]
-function appendH1(root, block, warnings) {
-  const wrap = makeWrapper(root, 'HORIZONTAL')
-  wrap.paddingTop = 9
-  wrap.primaryAxisAlignItems = 'SPACE_BETWEEN'
-  try { wrap.counterAxisAlignItems = 'BASELINE' } catch (e) { wrap.counterAxisAlignItems = 'CENTER' }
-  wrap.itemSpacing = 12
-  const title = instOf('h1', warnings)
-  if (title) { wrap.appendChild(title); title.layoutSizingHorizontal = 'HUG'; setProps(title, { 内容: block.text }, warnings) }
-  if (block.more) {
-    const more = instOf('more_btn', warnings)
-    if (more) { wrap.appendChild(more); more.layoutSizingHorizontal = 'HUG' }
-  }
-}
-
-// card：VERTICAL wrapper（上下 padding 3）+ P_card_h
-function appendCardH(root, card, warnings) {
-  const wrap = makeWrapper(root, 'VERTICAL'); wrap.paddingTop = 3; wrap.paddingBottom = 3
-  const inst = instOf('product_card_h', warnings); if (!inst) return
-  wrap.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-  setProps(inst, {
-    自营标显示: !!card.ziying,
-    ...(card.name1 != null ? { 商品标题1: String(card.name1) } : {}),
-    ...(card.price != null ? { 价格数字: stripYen(card.price) } : {}),
-    ...(has(card.name2) ? { 商品标题2: String(card.name2) } : {}),
-    ...(has(card.sold) ? { 销量文案: String(card.sold) } : {}),
-  }, warnings)
-  if (!has(card.name2)) hideByName(inst, '标题行2')
-  if (!has(card.sold)) hideByName(inst, '置信字段')
-  fillTags(inst, card, warnings)
-}
-
-// row_v：竖卡 2 列，HORIZONTAL 横排，间距 7
-function appendRowV(root, block, warnings) {
-  const wrap = makeWrapper(root, 'HORIZONTAL'); wrap.itemSpacing = 7
-  for (const card of (block.cards || []).slice(0, 2)) {
-    const inst = instOf('product_card_v', warnings); if (!inst) continue
-    wrap.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-    setProps(inst, {
-      自营标显示: !!card.ziying,
-      ...(card.name != null ? { 商品标题: String(card.name) } : {}),
-      ...(card.price != null ? { 价格: stripYen(card.price) } : {}),
-      ...(has(card.sold) ? { 销量文案: String(card.sold) } : {}),
-      ...(has(card.shop) ? { 店铺名: String(card.shop) } : {}),
-    }, warnings)
-    if (!has(card.sold)) hideByName(inst, '销量500+')
-    if (!has(card.shop)) hideByName(inst, 'Frame 2085663872')
-    fillTags(inst, card, warnings)
-  }
-}
-
-// filter_card：内含 一级标题 实例 + 3 个 筛选卡 选项实例（变体 属性1）
-function appendFilterCard(root, block, warnings) {
-  const inst = instOf('filter_card', warnings); if (!inst) return
-  root.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-  const titleInst = inst.findOne((n) => n.type === 'INSTANCE' && (n.mainComponent?.name || '').includes('一级标题'))
-  if (titleInst && block.title) setProps(titleInst, { 内容: block.title }, warnings)
-  const opts = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '筛选卡')
-  const data = block.options || []
-  for (let i = 0; i < Math.min(opts.length, data.length); i++) {
-    const o = data[i]
-    setProps(opts[i], {
-      属性1: o.selected ? '已选中' : '未选中',
-      ...(o.text ? { 内容: o.text } : {}),
-      ...(o.desc ? { 描述: o.desc, 展示描述: true } : {}),
-    }, warnings)
-  }
-}
-
-// r_card_scheme：3×2 网格，子卡是 F_card_L / F_card_S，仅有「价格」属性
-function appendRScheme(root, block, warnings) {
-  const inst = instOf('r_card_scheme', warnings); if (!inst) return
-  root.appendChild(inst); inst.layoutSizingHorizontal = 'FILL'
-  const cards = inst.findAll((n) => n.type === 'INSTANCE' && /F_card_[LS]/.test(n.mainComponent?.name || ''))
-  const prices = block.prices || []
-  for (let i = 0; i < Math.min(cards.length, prices.length); i++) {
-    setProps(cards[i], { 价格: stripYen(prices[i]) }, warnings)
-  }
-}
-
-/* 嵌套标签（促销标×1 + 服务标×N），P_card_h / P_card_v 共用 */
-function fillTags(inst, card, warnings) {
-  const promos = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '促销标')
-  const services = inst.findAll((n) => n.type === 'INSTANCE' && n.name === '服务标')
-  setTag(promos[0], card.promo, warnings)
-  const svc = Array.isArray(card.services) ? card.services : []
-  if (svc.length > services.length) warnings.push(`服务标 ${svc.length} 个 > ${services.length} 槽位，已截断`)
-  services.forEach((node, i) => setTag(node, svc[i], warnings))
-}
-function setTag(node, text, warnings) {
-  if (!node) return
-  if (!has(text)) { node.visible = false; return }
-  setProps(node, { 文本: String(text) }, warnings)
-}
-
-/* ───────────────────────── 工具 ───────────────────────── */
 // 通用属性填充：{基础名: 值} → 按基础名匹配真实 key → setProperties
 function setProps(inst, obj, warnings) {
   const km = baseMap(inst.mainComponent)
@@ -248,19 +268,15 @@ function setProps(inst, obj, warnings) {
   }
   if (Object.keys(out).length) inst.setProperties(out)
 }
-function makeWrapper(parent, direction) {
+function mkW(parent, direction) {
   const w = relay.createAutoLayout(direction)
   parent.appendChild(w)
   w.layoutSizingHorizontal = 'FILL'
   w.fills = []
   return w
 }
-function hideByName(inst, name) {
-  const n = inst.findOne((x) => x.name === name)
-  if (n) n.visible = false
-}
+function hideByName(inst, name) { const n = inst.findOne((x) => x.name === name); if (n) n.visible = false }
 function has(v) { return v != null && v !== '' }
-// 价格统一兜底去前导 ¥（组件自带 ¥，schema 传纯数字或含 ¥ 都安全）
 function stripYen(v) { return String(v).replace(/^\s*¥\s*/, '') }
 
 /* 基础名 → 真实 key。⚠ 读 mainComponent 的 componentPropertyDefinitions
