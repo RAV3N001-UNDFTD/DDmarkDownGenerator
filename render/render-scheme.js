@@ -51,7 +51,7 @@ async function renderScheme(scheme) {
 
 /* ═════════════════════ 框架2：横卡分组推荐（板 18:875，pad10/gap10）═══════════════════ */
 function renderSectionsH(scheme, warnings) {
-  const root = makeRoot(scheme.title, 10, 10)
+  const root = makeRoot(scheme.title, 10, 16, 10)
   appendInst(root, 'header', warnings)
   if (scheme.intro) appendText(root, 'body', scheme.intro, warnings)
   for (const sec of scheme.sections || []) {
@@ -65,21 +65,21 @@ function renderSectionsH(scheme, warnings) {
 
 /* ═════════════════════ 框架1：竖卡 2 列网格（板 18:860，pad10/gap10）═══════════════════ */
 function renderGridV(scheme, warnings) {
-  const root = makeRoot(scheme.title, 10, 10)
+  const root = makeRoot(scheme.title, 10, 16, 10)
   appendInst(root, 'header', warnings)
   if (scheme.h1) h1Row(root, scheme.h1, scheme.more, 0, warnings)
   if (scheme.body) appendText(root, 'body', scheme.body, warnings)
   const cards = scheme.cards || []
-  const grid = mkW(root, 'HORIZONTAL'); grid.itemSpacing = 10 // FILL 宽 355，左对齐
-  const colL = mkW(grid, 'VERTICAL'); colL.itemSpacing = 10; colL.layoutSizingHorizontal = 'HUG'
-  const colR = mkW(grid, 'VERTICAL'); colR.itemSpacing = 10; colR.layoutSizingHorizontal = 'HUG'
-  cards.forEach((c, i) => cardV((i % 2 === 0 ? colL : colR), c, warnings, false)) // 行优先：偶左奇右；卡保持 168 原宽
+  const grid = mkW(root, 'HORIZONTAL'); grid.itemSpacing = 10 // FILL 343
+  const colL = mkW(grid, 'VERTICAL'); colL.itemSpacing = 10 // FILL 半宽（约 166.5）
+  const colR = mkW(grid, 'VERTICAL'); colR.itemSpacing = 10
+  cards.forEach((c, i) => cardV((i % 2 === 0 ? colL : colR), c, warnings)) // 行优先：偶左奇右；卡 FILL 半宽
   return root
 }
 
 /* ═════════════════════ 框架3：R 网格配思路文案（板 18:936，pad16/gap6+wrapper）══════════ */
 function renderRGrid(scheme, warnings) {
-  const root = makeRoot(scheme.title, 16, 6)
+  const root = makeRoot(scheme.title, 16, 16, 6)
   const hw = mkW(root, 'VERTICAL'); hw.paddingBottom = 13; appendInst(hw, 'header', warnings) // header wrapper
   if (scheme.h1) h1Row(root, scheme.h1, false, 9, warnings) // h1 wrapper 上 padding 9
   if (scheme.body) appendText(root, 'body', scheme.body, warnings)
@@ -96,7 +96,7 @@ function renderRGrid(scheme, warnings) {
 
 /* ═════════════════════ 意图收集：N 问筛选卡（板 18:908，pad10/gap10，末张才显示按钮）════════ */
 function renderIntent(scheme, warnings) {
-  const root = makeRoot(scheme.title, 10, 10)
+  const root = makeRoot(scheme.title, 10, 16, 10)
   appendInst(root, 'header', warnings)
   if (scheme.intro) appendText(root, 'body', scheme.intro, warnings)
   const qs = scheme.questions || []
@@ -117,7 +117,7 @@ function renderIntent(scheme, warnings) {
 
 /* ═════════════════════ 兜底：扁平 blocks（灵活拼，pad10/gap10）═══════════════════ */
 function renderBlocks(scheme, warnings) {
-  const root = makeRoot(scheme.title, 10, 10)
+  const root = makeRoot(scheme.title, 10, 16, 10)
   for (const b of scheme.blocks || []) {
     switch (b.type) {
       case 'header': appendInst(root, 'header', warnings); break
@@ -240,11 +240,11 @@ function instOf(logical, warnings) {
   return comp.type === 'COMPONENT_SET' ? comp.defaultVariant.createInstance() : comp.createInstance()
 }
 
-function makeRoot(title, pad, gap) {
+function makeRoot(title, padV, padH, gap) {
   const { x, y } = nextTopLevelOrigin()
   const root = relay.createAutoLayout('VERTICAL')
   relay.currentPage.appendChild(root)
-  root.set({ name: title || '对话流方案', paddingLeft: pad, paddingRight: pad, paddingTop: pad, paddingBottom: pad, itemSpacing: gap, fills: [{ type: 'SOLID', color: COLOR.WHITE }] })
+  root.set({ name: title || '对话流方案', paddingLeft: padH, paddingRight: padH, paddingTop: padV, paddingBottom: padV, itemSpacing: gap, fills: [{ type: 'SOLID', color: COLOR.WHITE }] })
   root.resize(PAGE_WIDTH, root.height)
   root.primaryAxisSizingMode = 'AUTO'
   root.counterAxisSizingMode = 'FIXED'

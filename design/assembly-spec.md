@@ -51,16 +51,17 @@ last_updated: "2026-06-02"
 
 ## §2 框架（4 种，渲染器顶层按 `framework` 分派）
 
-> 商品推荐 3 种 + 意图收集 1 种。**每个框架的间距按各自参考板测量**（不强行统一）：框架1/2/意图收集用 pad10/gap10 扁平，框架3 用 pad16/gap6+wrapper。
+> 商品推荐 3 种 + 意图收集 1 种。**左右边距统一 16px**（内容宽 343）；纵向间距/上下 padding 按各自参考板测量（不强行统一）。
 
-| framework | 命名 | 参考板 | 结构 | 根间距 |
+| framework | 命名 | 参考板 | 结构 | 根 padding(上/右/下/左) · gap |
 |---|---|---|---|---|
-| `sections_h` | 框架2·横卡分组 | `18:875` | header + intro正文 + N段[h1(更多)+body+横卡×N]（段容器 gap10） | pad10 / gap10 |
-| `grid_v` | 框架1·竖卡网格 | `18:860` | header + h1(更多) + body + 竖卡 2 列网格（列 gap10、列内 gap10，行优先偶左奇右，卡保持 168 原宽） | pad10 / gap10 |
-| `r_grid` | 框架3·R网格配文案 | `18:936` | header(wrapper下13) + h1(wrapper上9,无更多) + body + R_cardScheme + footer正文 | pad16 / gap6 |
-| `intent_collect` | 意图收集 | `18:908` | header + intro正文 + N问筛选卡（**仅末张显示「开始推荐吧」**） | pad10 / gap10 |
+| `sections_h` | 框架2·横卡分组 | `18:875` | header + intro正文 + N段[h1(更多)+body+横卡×N]（段容器 gap10） | 10/16/10/16 · gap10 |
+| `grid_v` | 框架1·竖卡网格 | `18:860` | header + h1(更多) + body + 竖卡 2 列网格（两列 **FILL 半宽≈166.5**，列内 gap10，行优先偶左奇右） | 10/16/10/16 · gap10 |
+| `r_grid` | 框架3·R网格配文案 | `18:936` | header(wrapper下13) + h1(wrapper上9,无更多) + body + R_cardScheme + footer正文 | 16/16/16/16 · gap6 |
+| `intent_collect` | 意图收集 | `18:908` | header + intro正文 + N问筛选卡（**仅末张显示「开始推荐吧」**） | 10/16/10/16 · gap10 |
 
-省略 `framework` → 走 `blocks` 扁平兜底（灵活拼，pad10/gap10）。
+> **左右边距固定 16**（`makeRoot(title, padV, padH, gap)` 的 padH=16）；上下 padding 框架3 为 16、其余为 10。
+> 省略 `framework` → 走 `blocks` 扁平兜底（10/16/10/16 · gap10）。
 
 ### 复用的区块装配规则
 
