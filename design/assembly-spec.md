@@ -63,6 +63,11 @@ last_updated: "2026-06-02"
 > **左右边距固定 16**（`makeRoot(title, padV, padH, gap)` 的 padH=16）；上下 padding 框架3 为 16、其余为 10。
 > 省略 `framework` → 走 `blocks` 扁平兜底（10/16/10/16 · gap10）。
 
+### 跨页生成
+
+默认在组件库同页（`0:2`）生成。要生成到别的页：`renderScheme(scheme, { pageId: '7:1' })`。
+组件始终从库页（`0:2`，可用 `libPageId` 改）实时解析、跨页实例化；root 建在目标页。
+
 ### 复用的区块装配规则
 
 | 区块 | 规则 |

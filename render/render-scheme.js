@@ -29,10 +29,11 @@ const COLOR = { WHITE: { r: 1, g: 1, b: 1 } }
 const PAGE_WIDTH = 375
 
 /* ───────────────────────── 顶层入口 ───────────────────────── */
-async function renderScheme(scheme) {
+async function renderScheme(scheme, opts = {}) {
   const warnings = []
-  await setupPageAndFonts()
-  buildCompCache()
+  const libId = opts.libPageId || '0:2'      // 组件库所在页
+  const targetId = opts.pageId || libId       // 生成目标页（默认与库页同页）
+  await setupFontsAndPages(libId, targetId)
   let root
   switch (scheme.framework) {
     case 'sections_h': root = renderSectionsH(scheme, warnings); break
@@ -212,17 +213,21 @@ function appendText(parent, logical, text, warnings) {
 }
 
 /* ═════════════════════ 基础设施 ═══════════════════ */
-async function setupPageAndFonts() {
-  const page = relay.root.children.find((p) => p.id === '0:2')
-  if (page) await relay.setCurrentPageAsync(page)
+async function setupFontsAndPages(libId, targetId) {
   for (const style of ['Semibold', 'Medium', 'Regular']) {
     try { await relay.loadFontAsync({ family: 'PingFang SC', style }) } catch (e) {}
   }
+  // 组件库页：加载并扫描组件（实例可跨页创建，无需切到该页）
+  const libPage = relay.root.children.find((p) => p.id === libId)
+  if (libPage) { await libPage.loadAsync(); buildCompCache(libPage) }
+  // 目标页：切过去，root 建在这里
+  const targetPage = relay.root.children.find((p) => p.id === targetId)
+  if (targetPage) await relay.setCurrentPageAsync(targetPage)
 }
 
 let COMP_CACHE = null
-function buildCompCache() {
-  COMP_CACHE = relay.currentPage.findAll(
+function buildCompCache(page) {
+  COMP_CACHE = page.findAll(
     (n) => (n.type === 'COMPONENT' || n.type === 'COMPONENT_SET') && !(n.parent && n.parent.type === 'COMPONENT_SET')
   )
 }
